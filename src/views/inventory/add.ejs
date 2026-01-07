@@ -1,0 +1,47 @@
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">Add New Medicine</h1>
+
+    <form action="/inventory/add" method="POST" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Medicine Name -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Medicine Name</label>
+                <input type="text" name="name" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+
+            <!-- Unit -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Unit</label>
+                <select name="unit" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Unit</option>
+                    <option value="TAB">Tablet</option>
+                    <option value="CAP">Capsule</option>
+                </select>
+            </div>
+
+            <!-- Expiry Date -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Expiry Date</label>
+                <input type="date" name="expiry_date" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+
+            <!-- Initial Stock -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Initial Stock</label>
+                <input type="number" name="current_stock" required min="0"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex justify-end mt-6">
+            <button type="submit"
+                class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Add Medicine
+            </button>
+        </div>
+    </form>
+</div> 

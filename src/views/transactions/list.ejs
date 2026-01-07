@@ -1,0 +1,3448 @@
+<%- contentFor('style') %>
+<style>
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 2rem;
+        border-radius: 0.375rem;
+        color: white;
+        font-size: 0.875rem;
+        font-weight: 500;
+        z-index: 9999;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        pointer-events: none;
+    }
+
+    .notification.success {
+        background-color: #48bb78;
+    }
+
+    .notification.error {
+        background-color: #f56565;
+    }
+
+    .notification.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+     
+    .table-container {
+        position: relative;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+     
+    .bg-white.rounded-lg.shadow-lg.p-6.flex.flex-col.space-y-4 {
+        height: calc(100vh - 12rem);
+        max-width: 100%;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+     
+    .flex.flex-col.space-y-4.flex-1 {
+        overflow: hidden;
+        padding: 0 1rem;
+    }
+
+     
+    .flex-1.min-h-0.overflow-auto.rounded-lg.border.border-gray-200 {
+        height: calc(4 * 3.5rem + 3rem);  
+        overflow-y: auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 1rem;
+        border-radius: 0.5rem;
+    }
+
+    #ongoingTransactionsTable,
+    #finishedTransactionsTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        margin: 0;
+    }
+    
+    #ongoingTransactionsTable thead,
+    #finishedTransactionsTable thead {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #f9fafb;
+        width: 100%;
+        height: 3rem;
+    }
+
+     
+    .flex.justify-between.items-center.pb-4 {
+        padding: 0 1rem;
+    }
+
+     
+    .grid.grid-cols-1.md\:grid-cols-3.gap-6 {
+        padding: 0 1rem;
+        margin-bottom: 1rem;
+    }
+
+     
+    #ongoingTransactionsTable th,
+    #finishedTransactionsTable th {
+        background: #f9fafb;
+        box-shadow: inset 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb;
+        padding: 0.5rem 0.25rem;
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #4b5563;
+        position: relative;
+        min-width: 100px;
+        height: 3rem;
+    }
+
+     
+    #ongoingTransactionsTable td,
+    #finishedTransactionsTable td {
+        padding: 0.75rem 0.25rem;
+        font-size: 0.8rem;
+        line-height: 1.2;
+        color: #374151;
+        background-color: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+        height: 3.5rem;
+    }
+
+     
+    .empty-state {
+        height: calc(4 * 3.5rem);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 1rem;
+    }
+
+     
+    .table-cell-content {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0 0.25rem;
+        width: 100%;
+        display: block;
+    }
+
+     
+    .flex-1.min-h-0.overflow-auto.rounded-lg.border.border-gray-200::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .flex-1.min-h-0.overflow-auto.rounded-lg.border.border-gray-200::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .flex-1.min-h-0.overflow-auto.rounded-lg.border.border-gray-200::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+
+    .flex-1.min-h-0.overflow-auto.rounded-lg.border.border-gray-200::-webkit-scrollbar-thumb:hover {
+        background: #666;
+    }
+
+     
+    .filter-container {
+        margin: 0 1rem 1rem 1rem;
+    }
+
+     
+    #ongoingTransactionsTable tr,
+    #finishedTransactionsTable tr {
+        height: 3.5rem;
+    }
+
+     
+    @media (max-width: 1280px) {
+        #ongoingTransactionsTable th:nth-child(3),
+        #ongoingTransactionsTable td:nth-child(3),
+        #finishedTransactionsTable th:nth-child(3),
+        #finishedTransactionsTable td:nth-child(3) {
+            display: none;  
+        }
+    }
+
+    @media (max-width: 1024px) {
+        #ongoingTransactionsTable th:nth-child(4),
+        #ongoingTransactionsTable td:nth-child(4),
+        #finishedTransactionsTable th:nth-child(4),
+        #finishedTransactionsTable td:nth-child(4) {
+            display: none;  
+        }
+
+        .table-cell-content {
+            max-width: 120px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        #ongoingTransactionsTable th:nth-child(1),
+        #ongoingTransactionsTable td:nth-child(1),
+        #finishedTransactionsTable th:nth-child(1),
+        #finishedTransactionsTable td:nth-child(1) {
+            display: none;  
+        }
+
+        .table-cell-content {
+            max-width: 100px;
+        }
+
+        .finish-transaction-btn span,
+        .cancel-transaction-btn span {
+            display: none;
+        }
+    }
+
+     
+    @media (min-width: 1281px) {
+        #ongoingTransactionsTable th:nth-child(1),
+        #finishedTransactionsTable th:nth-child(1) { width: 8%; }  
+        
+        #ongoingTransactionsTable th:nth-child(2),
+        #finishedTransactionsTable th:nth-child(2) { width: 15%; }  
+        
+        #ongoingTransactionsTable th:nth-child(3),
+        #finishedTransactionsTable th:nth-child(3) { width: 12%; }  
+        
+        #ongoingTransactionsTable th:nth-child(4),
+        #finishedTransactionsTable th:nth-child(4) { width: 20%; }  
+        
+        #ongoingTransactionsTable th:nth-child(5),
+        #finishedTransactionsTable th:nth-child(5) { width: 10%; }  
+        
+        #ongoingTransactionsTable th:nth-child(6),
+        #finishedTransactionsTable th:nth-child(6) { width: 15%; }  
+        
+        #ongoingTransactionsTable th:nth-child(7),
+        #finishedTransactionsTable th:nth-child(7) { width: 5%; }  
+        
+        #ongoingTransactionsTable th:nth-child(8),
+        #finishedTransactionsTable th:nth-child(8) { width: 15%; }  
+    }
+
+     
+    .finish-transaction-btn,
+    .cancel-transaction-btn {
+        padding: 0.35rem;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+    }
+
+    @media (min-width: 769px) {
+        .finish-transaction-btn,
+        .cancel-transaction-btn {
+            padding: 0.35rem 0.75rem;
+        }
+    }
+
+     
+    .table-cell-content:hover::after {
+        content: attr(data-full-text);
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        transform: translateX(-50%);
+        background: #ffffff;
+        padding: 0.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.25rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 30;
+        white-space: normal;
+        max-width: 300px;
+        word-wrap: break-word;
+        text-align: center;
+        font-size: 0.75rem;
+    }
+
+    tbody tr:first-child td {
+        border-top: none;
+    }
+    
+    .hover-row:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+        transition: all 0.2s ease;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-block;
+    }
+
+    .status-badge.ongoing {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: rgb(29, 78, 216);
+    }
+
+    .status-badge.finished {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: rgb(4, 120, 87);
+    }
+
+    .sort-button {
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        transition: all 0.2s ease;
+        position: relative;
+        width: 100%;
+    }
+
+    .sort-button:hover {
+        color: #2563eb;
+        background-color: rgba(37, 99, 235, 0.05);
+        transform: translateY(-1px);
+    }
+
+    .sort-button:active {
+        transform: translateY(0);
+    }
+
+    .sort-icon {
+        opacity: 0;
+        transition: all 0.2s ease;
+        width: 16px;
+        height: 16px;
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .sort-button:hover .sort-icon {
+        opacity: 1;
+    }
+
+    .sort-active .sort-icon {
+        opacity: 1;
+        color: #2563eb;
+    }
+
+    .sort-active {
+        color: #2563eb;
+        background-color: rgba(37, 99, 235, 0.05);
+    }
+
+     
+    .sort-button {
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        transition: all 0.2s ease;
+        position: relative;
+        width: 100%;
+    }
+
+     
+    .sort-icon {
+        opacity: 0;
+        transition: all 0.2s ease;
+        width: 16px;
+        height: 16px;
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+     
+    .sort-button span {
+        padding-right: 20px;  
+        display: inline-block;
+    }
+
+    .sort-button:hover .sort-icon {
+        opacity: 1;
+    }
+
+    .sort-active .sort-icon {
+        opacity: 1;
+        color: #2563eb;
+    }
+
+    .sort-active {
+        color: #2563eb;
+        background-color: rgba(37, 99, 235, 0.05);
+    }
+
+     
+    #ongoingTransactionsTable th:nth-child(1),
+    #finishedTransactionsTable th:nth-child(1) { min-width: 120px; }  
+    
+    #ongoingTransactionsTable th:nth-child(2),
+    #finishedTransactionsTable th:nth-child(2) { min-width: 150px; }  
+    
+    #ongoingTransactionsTable th:nth-child(3),
+    #finishedTransactionsTable th:nth-child(3) { min-width: 140px; }  
+    
+    #ongoingTransactionsTable th:nth-child(4),
+    #finishedTransactionsTable th:nth-child(4) { min-width: 180px; }  
+    
+    #ongoingTransactionsTable th:nth-child(5),
+    #finishedTransactionsTable th:nth-child(5) { min-width: 100px; }  
+    
+    #ongoingTransactionsTable th:nth-child(6),
+    #finishedTransactionsTable th:nth-child(6) { min-width: 150px; }  
+    
+    #ongoingTransactionsTable th:nth-child(7),
+    #finishedTransactionsTable th:nth-child(7) { min-width: 80px; }  
+    
+    #ongoingTransactionsTable th:nth-child(8),
+    #finishedTransactionsTable th:nth-child(8) { min-width: 120px; }  
+</style>
+
+<!-- Add Canterbury font for PDF generation -->
+<script src="/js/canterbury-font.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+// Function to load Canterbury font for PDF generation
+async function loadFont() {
+    try {
+        if (window.canterburyFontData) {
+            const doc = new window.jspdf.jsPDF();
+            doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+            doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+            console.log('Canterbury font loaded successfully');
+            return true;
+        } else {
+            console.error('Canterbury font data not found');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error loading Canterbury font:', error);
+        return false;
+    }
+}
+
+// Load font when document is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadFont();
+});
+
+// ... rest of your existing JavaScript code ...
+</script>
+
+<%- contentFor('body') %>
+<div id="notification" class="fixed top-4 right-4 px-4 py-2 text-white rounded shadow-lg transform transition-all duration-300 opacity-0 invisible"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.1/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+    // Reusable chart configuration
+    const chartConfig = {
+        height: 40,
+        columnWidth: 6,
+        gridLines: 4,
+        leftMargin: 25
+    };
+
+    // Helper function to draw column chart
+    function drawColumnChart(doc, data, startY, maxValue, pageWidth) {
+        const chartHeight = chartConfig.height;
+        const chartWidth = pageWidth - 60;
+        const columnWidth = chartConfig.columnWidth;
+        const columnSpacing = (chartWidth - (columnWidth * 10)) / 9;
+        const leftMargin = chartConfig.leftMargin;
+        const bottomY = startY + chartHeight;
+
+        // Draw Y-axis grid lines and labels
+        doc.setDrawColor(200, 200, 200);
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        
+        for (let i = 0; i <= chartConfig.gridLines; i++) {
+            const y = bottomY - (i * (chartHeight / chartConfig.gridLines));
+            const value = Math.round((i * maxValue) / chartConfig.gridLines);
+            
+            // Draw grid line
+            doc.setLineDash([2, 2]);
+            doc.line(leftMargin, y, pageWidth - 35, y);
+            doc.setLineDash([]);
+            
+            // Draw value label
+            doc.text(value.toString(), leftMargin - 2, y, { align: 'right' });
+        }
+
+        // Draw columns and labels
+        data.forEach((row, index) => {
+            const x = leftMargin + (index * (columnWidth + columnSpacing));
+            const columnHeight = (row[4] / maxValue) * chartHeight;
+            
+            // Draw column
+            doc.setFillColor(255, 128, 0);
+            doc.rect(x, bottomY - columnHeight, columnWidth, columnHeight, 'F');
+            
+            // Draw value on top of column
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(row[4].toString(), x + (columnWidth / 2), bottomY - columnHeight - 2, { align: 'center' });
+            
+            // Draw label below column (rotated)
+            const labelX = x + (columnWidth / 2);
+            doc.text(row[0], labelX, bottomY + 2, {
+                align: 'left',
+                maxWidth: 20,
+                angle: -45
+            });
+        });
+
+        // Draw X and Y axes
+        doc.setDrawColor(100, 100, 100);
+        doc.setLineWidth(0.5);
+        doc.line(leftMargin, bottomY, leftMargin, startY); // Y-axis
+        doc.line(leftMargin, bottomY, pageWidth - 35, bottomY); // X-axis
+
+        return bottomY;
+    }
+
+    // Helper function to add signatures
+    function addSignatures(doc, startY) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        
+        const pageWidth = doc.internal.pageSize.width;
+        const leftMargin = 30;
+        const rightMargin = pageWidth - 30;
+        const lineSpacing = 5;
+        const sectionSpacing = 25;
+        
+        // Prepared by (now on the right)
+        doc.text('Prepared by:', rightMargin - 20, startY);
+        doc.setFont('times', 'bold');
+        doc.text(signatories.preparedBy.name, rightMargin, startY + lineSpacing + 10, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.preparedBy.position, rightMargin, startY + lineSpacing + 15, { align: 'right' });
+
+        // Approved by (now on the left)
+        doc.text('Approved by:', leftMargin, startY + sectionSpacing + 15);
+        doc.setFont('times', 'bold');
+        doc.text(signatories.notedBy.name, leftMargin, startY + sectionSpacing + lineSpacing + 25);
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.notedBy.position, leftMargin, startY + sectionSpacing + lineSpacing + 30);
+    }
+
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const chunkSize = 1024;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.slice(i, i + chunkSize);
+            chunk.forEach(byte => binary += String.fromCharCode(byte));
+        }
+        return window.btoa(binary);
+    }
+
+    async function loadFont(url) {
+        try {
+            // First try to use the pre-loaded font data
+            if (window.canterburyFontData) {
+                return window.canterburyFontData;
+            }
+
+            // If not available, fetch it
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const base64Data = arrayBufferToBase64(arrayBuffer);
+            
+            // Cache the result
+            window.canterburyFontData = base64Data;
+            return base64Data;
+        } catch (error) {
+            console.error('Error loading font:', url, error);
+            throw error;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+    // Font loading
+    try {
+        // Only load if not already loaded
+        if (!window.canterburyFontData) {
+            window.canterburyFontData = await loadFont('/fonts/Canterbury.ttf');
+        }
+    } catch (error) {
+        console.error('Error loading fonts:', error);
+        showNotification('Some fonts failed to load. System fonts will be used.', 'warning');
+    }
+
+    // Handle URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const notification = urlParams.get('notification');
+    if (notification) {
+        showNotification(notification, notificationType || 'success');
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+    }
+        // Medication search setup
+        const medicationSearch = document.getElementById('medicationSearch');
+        const quantityInput = document.getElementById('newQuantityInput');
+        
+        if (medicationSearch) {
+            medicationSearch.addEventListener('input', function(e) {
+                const searchTerm = e.target.value;
+                if (!searchTerm) {
+                    quantityInput.disabled = true;
+                    quantityInput.value = '0';
+                    document.getElementById('selectedMedicationInfo').classList.add('hidden');
+                    document.getElementById('newSearchIcon').style.display = 'flex';
+                }
+            });
+
+            medicationSearch.addEventListener('focus', function(e) {
+                filterAndDisplayMedications('', true);
+                medicationDropdown.classList.remove('hidden');
+            });
+        }
+
+        // Document click handler for dropdown
+        document.addEventListener('click', function(e) {
+            if (medicationSearch && !medicationSearch.contains(e.target) && !medicationDropdown.contains(e.target)) {
+                medicationDropdown.classList.add('hidden');
+            }
+        });
+    });
+
+    // ... existing code ...
+</script>
+
+<% 
+function convertTo12Hour(time24) {
+    const [hours24, minutes] = time24.split(':');
+    const hours = parseInt(hours24);
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${minutes} ${suffix}`;
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+%>
+<div class="bg-white rounded-lg shadow-lg p-6 flex flex-col space-y-4" >
+    <!-- Header Section -->
+    <div class="flex justify-between items-center pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Medical Transactions</h1>
+            <p class="text-sm text-gray-600 mt-1">Manage and monitor all medical transactions</p>
+        </div>
+        <button onclick="openNewTransactionModal()" 
+            class="bg-blue-500 text-white py-2.5 px-5 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Transaction
+        </button>
+    </div>
+
+    <!-- Content Area with Fixed Height -->
+    <div class="flex flex-col space-y-4 flex-1">
+        <!-- Ongoing Transactions -->
+        <div class="flex-none min-h-0 flex flex-col" style="height: 28vh;">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <h2 class="text-xl font-semibold text-gray-800">Ongoing Transactions</h2>
+                    <span class="status-badge ongoing ml-2"><%= ongoingTransactions ? ongoingTransactions.length : 0 %> Active</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <input type="text" 
+                               id="ongoingSearchInput" 
+                               placeholder="Search transactions..." 
+                               class="pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <select id="ongoingFilterDate" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                    </select>
+                    <!-- Add Month and Year filters -->
+                    <div class="flex gap-2">
+                        <select id="ongoingFilterMonth" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Month</option>
+                            <% 
+                            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                             'July', 'August', 'September', 'October', 'November', 'December'];
+                            monthNames.forEach((month, index) => { %>
+                                <option value="<%= index + 1 %>"><%= month %></option>
+                            <% }); %>
+                        </select>
+                        <select id="ongoingFilterYear" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Year</option>
+                            <% 
+                            const currentYear = new Date().getFullYear();
+                            for(let year = currentYear; year >= currentYear - 2; year--) { %>
+                                <option value="<%= year %>"><%= year %></option>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 relative" id="ongoingTransactionsTable">
+                <thead class="sticky top-0 bg-gray-50 z-10">
+                    <tr>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Date</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Patient</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Course/Year/Sec</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Complaints</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Started</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Medication/Treatment</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Qty</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <% if (ongoingTransactions && ongoingTransactions.length > 0) { %>
+                        <% ongoingTransactions.forEach(function(transaction) { %>
+                                <tr class="hover-row">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="font-medium table-cell-content" data-full-text="<%= formatDate(transaction.date) %>">
+                                            <%= formatDate(transaction.date) %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="text-sm font-medium text-gray-900 table-cell-content" data-full-text="<%= transaction.patient_name %>">
+                                            <%= transaction.patient_name %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="table-cell-content" data-full-text="<%= transaction.course_year_section %>">
+                                            <%= transaction.course_year_section %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="table-cell-content" data-full-text="<%= transaction.complaints %>">
+                                            <%= transaction.complaints %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="font-medium text-blue-600 table-cell-content" data-full-text="<%= convertTo12Hour(transaction.time_started) %>">
+                                            <%= convertTo12Hour(transaction.time_started) %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="text-sm font-medium text-gray-900 table-cell-content" data-full-text="<%= transaction.medication || (transaction.remarks && transaction.remarks.includes('Treatment/Advice: ') ? transaction.remarks.split('\n\nAdditional Remarks: ')[0].replace('Treatment/Advice: ', '') : transaction.remarks) %>">
+                                            <%= transaction.medication || (transaction.remarks && transaction.remarks.includes('Treatment/Advice: ') ? transaction.remarks.split('\n\nAdditional Remarks: ')[0].replace('Treatment/Advice: ', '') : transaction.remarks) %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                        <div class="table-cell-content" data-full-text="<%= transaction.quantity %>">
+                                            <%= transaction.quantity %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                        <div class="flex items-center justify-center gap-2">
+                                    <button 
+                                        data-transaction-id="<%= transaction.id %>"
+                                                class="finish-transaction-btn bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm shadow-sm inline-flex items-center gap-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                        Finish
+                                    </button>
+                                            <button 
+                                                data-transaction-id="<%= transaction.id %>"
+                                                title="Cancel Transaction"
+                                                class="cancel-transaction-btn border-2 border-red-500 text-red-500 py-2 px-2 rounded-lg hover:bg-red-50 hover:border-red-600 hover:text-red-600 transition-all duration-200 text-sm inline-flex items-center justify-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                                <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p>No ongoing transactions</p>
+                                    </div>
+                                </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <!-- Finished Transactions -->
+        <div class="flex-none min-h-0 flex flex-col" style="height: 35vh;">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <h2 class="text-xl font-semibold text-gray-800">Finished Transactions</h2>
+                    <span class="status-badge finished ml-2"><%= finishedTransactions ? finishedTransactions.length : 0 %> Completed</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <input type="text" 
+                               id="finishedSearchInput" 
+                               placeholder="Search transactions..." 
+                               class="pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <select id="finishedFilterDate" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                    </select>
+                    <!-- Month and Year filters -->
+                    <div class="flex gap-2">
+                        <select id="finishedFilterMonth" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Month</option>
+                            <% monthNames.forEach((month, index) => { %>
+                                <option value="<%= index + 1 %>"><%= month %></option>
+                            <% }); %>
+                        </select>
+                        <select id="finishedFilterYear" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Year</option>
+                            <% for(let year = currentYear; year >= currentYear - 2; year--) { %>
+                                <option value="<%= year %>"><%= year %></option>
+                            <% } %>
+                        </select>
+                    </div>
+                    <!-- Generate Report Button -->
+                    <div class="relative">
+                        <button onclick="toggleQuarterlyReportDropdown()" 
+                                class="inline-flex items-center text-sm hover:text-gray-900 focus:outline-none transition-colors duration-200 mr-4"
+                                title="Generate Quarterly Report">
+                            <i class="fas fa-chart-bar text-lg mr-1"></i>
+                            <span>Generate Report</span>
+                            <i class="fas fa-chevron-down ml-2"></i>
+                        </button>
+                        <div id="quarterlyReportDropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                            <div class="py-1">
+                                <button onclick="generateQuarterlyReport(false)" 
+                                        class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                    <i class="fas fa-eye mr-2"></i>
+                                    Preview Report
+                                </button>
+                                <button onclick="generateQuarterlyReport(true)" 
+                                        class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Download Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Export Button -->
+                    <div class="relative">
+                        <button onclick="toggleTransactionReportDropdown()" 
+                                class="inline-flex items-center text-sm hover:text-gray-900 focus:outline-none transition-colors duration-200"
+                                title="Export Transactions">
+                            <i class="fas fa-file-export text-lg mr-1"></i>
+                            <span>Export Sheet</span>
+                            <i class="fas fa-chevron-down ml-2"></i>
+                        </button>
+                        <div id="transactionReportDropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                            <div class="py-1">
+                                <button onclick="generateTransactionPdf(false)" 
+                                        class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                    <i class="fas fa-eye mr-2"></i>
+                                    Preview PDF
+                                </button>
+                                <button onclick="generateTransactionPdf(true)" 
+                                        class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Download PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 relative" id="finishedTransactionsTable">
+                <thead class="sticky top-0 bg-gray-50 z-10">
+                    <tr>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Date</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Patient</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Course/Year/Sec</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Complaints</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Time</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Medication/Treatment</th>
+                        <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Qty</th>
+                        <% if (locals.isAdmin) { %>
+                            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Action</th>
+                        <% } else { %>
+                            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">Remarks</th>
+                        <% } %>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <% if (finishedTransactions && finishedTransactions.length > 0) { %>
+                        <% finishedTransactions.forEach(function(transaction) { %>
+                                <tr class="hover-row">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="font-medium table-cell-content" data-full-text="<%= formatDate(transaction.date) %>">
+                                            <%= formatDate(transaction.date) %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="text-sm font-medium text-gray-900 table-cell-content" data-full-text="<%= transaction.patient_name %>">
+                                            <%= transaction.patient_name %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="table-cell-content" data-full-text="<%= transaction.course_year_section %>">
+                                            <%= transaction.course_year_section %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        <div class="table-cell-content" data-full-text="<%= transaction.complaints %>">
+                                            <%= transaction.complaints %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                        <div class="text-sm text-gray-900">
+                                            <span class="text-blue-600"><%= convertTo12Hour(transaction.time_started) %></span>
+                                            -
+                                            <span class="text-green-600"><%= transaction.time_finished ? convertTo12Hour(transaction.time_finished) : 'Ongoing' %></span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="text-sm font-medium text-gray-900 table-cell-content" data-full-text="<%= transaction.medication || (transaction.remarks && transaction.remarks.includes('Treatment/Advice: ') ? transaction.remarks.split('\n\nAdditional Remarks: ')[0].replace('Treatment/Advice: ', '') : transaction.remarks) %>">
+                                            <%= transaction.medication || (transaction.remarks && transaction.remarks.includes('Treatment/Advice: ') ? transaction.remarks.split('\n\nAdditional Remarks: ')[0].replace('Treatment/Advice: ', '') : transaction.remarks) %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
+                                        <div class="table-cell-content" data-full-text="<%= transaction.quantity %>">
+                                            <%= transaction.quantity %>
+                                        </div>
+                                    </td>
+                                    <% if (locals.isAdmin) { %>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center" data-remarks="<%= transaction.remarks %>">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button 
+                                                    onclick="openEditTransactionModal('<%= transaction.id %>')"
+                                                    class="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                    title="Edit Transaction">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button 
+                                                    onclick="openDeleteTransactionModal('<%= transaction.id %>')"
+                                                    class="text-red-600 hover:text-red-800 transition-colors duration-200"
+                                                    title="Delete Transaction">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    <% } else { %>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"><%= transaction.remarks %></td>
+                                    <% } %>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p>No finished transactions</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% } %>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add the modal HTML structure right before the notification container -->
+<div id="newTransactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex flex-col space-y-4">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b pb-4">
+                <h3 class="text-xl font-semibold text-gray-900">Create New Transaction</h3>
+                <button onclick="closeNewTransactionModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="newTransactionForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" name="date" required
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Time Started -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Time Started</label>
+                        <input type="time" name="time_started" required
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Patient Name -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                        <input type="text" name="patient_name" required placeholder="Enter patient name"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Course/Year/Section -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Course/Year/Section</label>
+                        <input type="text" name="course_year_section" required placeholder="e.g., BSIT 2-1"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Complaints -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Complaints</label>
+                        <textarea name="complaints" required placeholder="Enter patient complaints"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+
+                    <!-- Medication -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Medication (Optional)</label>
+                        <div class="relative medication-search-container">
+                            <input type="hidden" name="medication" value="">
+                            <div class="relative">
+                                <input type="text" 
+                                    id="medicationSearch" 
+                                    placeholder="Search medication..." 
+                                    autocomplete="off"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <div id="newSearchIcon" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div id="medicationDropdown" class="absolute z-[60] w-full mt-1 bg-white shadow-lg rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                <!-- Options will be populated here -->
+                            </div>
+                            <div id="selectedMedicationInfo" class="mt-1 text-sm text-gray-500 hidden">
+                                Stock: <span class="font-medium" id="selectedMedStock"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity (Optional)</label>
+                        <input type="number" 
+                               name="quantity" 
+                               min="0" 
+                               placeholder="Enter quantity" 
+                               value="0"
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                               id="newQuantityInput"
+                               disabled>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Remarks (Optional)</label>
+                        <textarea name="remarks" placeholder="Enter any additional remarks"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeNewTransactionModal()"
+                        class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create Transaction
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Transaction Modal -->
+<div id="editTransactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex flex-col space-y-4">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b pb-4">
+                <h3 class="text-xl font-semibold text-gray-900">Edit Transaction</h3>
+                <button onclick="closeEditTransactionModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="editTransactionForm" class="space-y-4">
+                <input type="hidden" id="editTransactionId" name="id">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" id="editDate" name="date" required
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Time Started -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Time Started</label>
+                        <input type="time" id="editTimeStarted" name="time_started" required
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Patient Name -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                        <input type="text" id="editPatientName" name="patient_name" required placeholder="Enter patient name"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Course/Year/Section -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Course/Year/Section</label>
+                        <input type="text" id="editCourseYearSection" name="course_year_section" required placeholder="e.g., BSIT 2-1"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Complaints -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Complaints</label>
+                        <textarea id="editComplaints" name="complaints" required placeholder="Enter patient complaints"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+
+                    <!-- Medication -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Medication</label>
+                        <div class="relative">
+                            <input type="hidden" name="medication" id="editSelectedMedication">
+                            <div class="relative">
+                                <input type="text" 
+                                    id="editMedicationSearch" 
+                                    placeholder="Search medication..." 
+                                    autocomplete="off"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <div id="editSearchIcon" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div id="editMedicationDropdown" class="absolute z-50 w-[200%] -left-[50%] mt-1 bg-white shadow-lg rounded-lg border border-gray-200 hidden max-h-60 overflow-y-auto">
+                            </div>
+                        </div>
+                        <div class="mt-1 text-sm text-gray-500 hidden" id="editSelectedMedicationInfo">
+                            Stock: <span class="font-medium" id="editSelectedMedStock"></span>
+                        </div>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                        <input type="number" id="editQuantity" name="quantity" min="0" placeholder="Enter quantity"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Additional Remarks (Optional)</label>
+                        <textarea id="editRemarks" name="remarks" placeholder="Enter any additional remarks"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeEditTransactionModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Transaction Modal -->
+<div id="deleteTransactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-5 border w-96 shadow-lg rounded-lg bg-white">
+        <div class="flex flex-col space-y-4">
+            <!-- Header -->
+            <div class="flex justify-between items-center pb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Delete Transaction</h3>
+                <button onclick="closeDeleteTransactionModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <p class="text-sm text-gray-500">Are you sure you want to delete this transaction? This action cannot be undone.</p>
+
+            <!-- Password Confirmation Form -->
+            <form id="deleteTransactionForm" class="space-y-4">
+                <div>
+                    <label for="deletePassword" class="block text-sm font-medium text-gray-700 mb-1">Enter your password to confirm</label>
+                    <input type="password" 
+                        id="deletePassword" 
+                        name="password" 
+                        required
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        placeholder="Enter your password">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" 
+                        onclick="closeDeleteTransactionModal()" 
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Inline script for handling finish and cancel buttons -->
+<script>
+    function showNotification(message, type = 'success') {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `fixed top-4 right-4 px-4 py-2 text-white rounded shadow-lg transform transition-all duration-300 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+        
+        // Show notification
+        setTimeout(() => {
+            notification.classList.remove('opacity-0', 'invisible');
+        }, 100);
+        
+        // Hide notification
+        setTimeout(() => {
+            notification.classList.add('opacity-0');
+            setTimeout(() => {
+                notification.classList.add('invisible');
+            }, 300);
+        }, 3000);
+    }
+
+    // Wait for the page to be fully loaded
+    window.addEventListener('load', function() {
+        
+        const finishButtons = document.querySelectorAll('.finish-transaction-btn');
+        const cancelButtons = document.querySelectorAll('.cancel-transaction-btn');
+        
+        
+        
+        // Finish button functionality
+        finishButtons.forEach(button => {
+            button.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const transactionId = this.getAttribute('data-transaction-id');
+                
+                if (confirm('Are you sure you want to finish this transaction?')) {
+                    try {
+                        this.disabled = true;
+                        const originalContent = this.innerHTML;
+                        this.innerHTML = `
+                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>`;
+                        
+                        const response = await fetch(`/transactions/${transactionId}/finish`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok && data.success) {
+                            // Reload first, then show notification
+                            window.location.reload();
+                            // The notification will be shown after reload using URL parameters
+                            const url = new URL(window.location);
+                            url.searchParams.set('notification', 'Transaction finished successfully');
+                            url.searchParams.set('notificationType', 'success');
+                            window.location.href = url.toString();
+                        } else {
+                            throw new Error(data.error || 'Failed to finish transaction');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        showNotification(error.message, 'error');
+                        this.disabled = false;
+                        this.innerHTML = originalContent;
+                    }
+                }
+            });
+        });
+
+        // Cancel button functionality
+        cancelButtons.forEach(button => {
+            button.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const transactionId = this.getAttribute('data-transaction-id');
+                
+                if (confirm('Are you sure you want to cancel this transaction? This will return the medicine to inventory.')) {
+                    try {
+                        this.disabled = true;
+                        const originalContent = this.innerHTML;
+                        this.innerHTML = `
+                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>`;
+                        
+                        const response = await fetch(`/transactions/${transactionId}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok && data.success) {
+                            // Reload first, then show notification
+                            window.location.reload();
+                            // The notification will be shown after reload using URL parameters
+                            const url = new URL(window.location);
+                            url.searchParams.set('notification', 'Transaction canceled successfully');
+                            url.searchParams.set('notificationType', 'success');
+                            window.location.href = url.toString();
+                        } else {
+                            throw new Error(data.error || 'Failed to cancel transaction');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        showNotification(error.message, 'error');
+                        this.disabled = false;
+                        this.innerHTML = originalContent;
+                    }
+                }
+            });
+        });
+    });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize sorting and filtering
+    initializeTableFunctionality('ongoing');
+    initializeTableFunctionality('finished');
+});
+
+function initializeTableFunctionality(tableType) {
+    const searchInput = document.getElementById(`${tableType}SearchInput`);
+    const dateFilter = document.getElementById(`${tableType}FilterDate`);
+    const monthFilter = document.getElementById(`${tableType}FilterMonth`);
+    const yearFilter = document.getElementById(`${tableType}FilterYear`);
+    const table = document.getElementById(`${tableType}TransactionsTable`);
+    
+    if (!searchInput || !dateFilter || !monthFilter || !yearFilter || !table) {
+        
+        return;
+    }
+
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        
+        filterTable(tableType);
+    });
+
+    // Date filter functionality
+    dateFilter.addEventListener('change', function() {
+        
+        // Clear month and year filters when using date filter
+        if (this.value) {
+            monthFilter.value = '';
+            yearFilter.value = '';
+        }
+        filterTable(tableType);
+    });
+
+    // Month filter functionality
+    monthFilter.addEventListener('change', function() {
+        
+        // Clear date filter when using month/year filter
+        if (this.value) {
+            dateFilter.value = '';
+        }
+        filterTable(tableType);
+    });
+
+    // Year filter functionality
+    yearFilter.addEventListener('change', function() {
+        
+        // Clear date filter when using month/year filter
+        if (this.value) {
+            dateFilter.value = '';
+        }
+        filterTable(tableType);
+    });
+
+    // Add sort functionality to table headers
+    const headers = table.querySelectorAll('th');
+    headers.forEach((header, index) => {
+        if (!header.classList.contains('no-sort')) {
+            header.classList.add('sort-button');
+            const existingContent = header.innerHTML;
+            header.innerHTML = `
+                <div class="flex items-center justify-center gap-1">
+                    ${existingContent}
+                    <svg class="sort-icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+                    </svg>
+                </div>
+            `;
+            header.addEventListener('click', () => {
+                
+                sortTable(table, index);
+            });
+        }
+    });
+}
+
+function sortTable(table, columnIndex) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const header = table.querySelector(`th:nth-child(${columnIndex + 1})`);
+    
+    // Toggle sort direction
+    const isAscending = !header.classList.contains('sort-ascending');
+    
+    // Update header classes
+    table.querySelectorAll('th').forEach(th => {
+        th.classList.remove('sort-ascending', 'sort-descending', 'sort-active');
+    });
+    header.classList.add(isAscending ? 'sort-ascending' : 'sort-descending', 'sort-active');
+
+    // Sort rows
+    rows.sort((a, b) => {
+        const aValue = a.querySelector(`td:nth-child(${columnIndex + 1})`).textContent;
+        const bValue = b.querySelector(`td:nth-child(${columnIndex + 1})`).textContent;
+        
+        if (isDate(aValue) && isDate(bValue)) {
+            return isAscending ? 
+                new Date(aValue) - new Date(bValue) : 
+                new Date(bValue) - new Date(aValue);
+        }
+        
+        return isAscending ? 
+            aValue.localeCompare(bValue) : 
+            bValue.localeCompare(aValue);
+    });
+
+    // Reorder rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Helper functions
+function isDate(dateStr) {
+    const date = new Date(dateStr);
+    return date instanceof Date && !isNaN(date);
+}
+
+function isSameDay(date1, date2) {
+    return date1.getDate() === date2.getDate() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+}
+
+function isThisWeek(date) {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    return date >= weekStart && date <= weekEnd;
+}
+
+function isSameMonth(date1, date2) {
+    return date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+}
+
+function filterTable(tableType) {
+    const searchInput = document.getElementById(`${tableType}SearchInput`);
+    const dateFilter = document.getElementById(`${tableType}FilterDate`);
+    const monthFilter = document.getElementById(`${tableType}FilterMonth`);
+    const yearFilter = document.getElementById(`${tableType}FilterYear`);
+    const table = document.getElementById(`${tableType}TransactionsTable`);
+    
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    const searchTerm = searchInput?.value.toLowerCase() || '';
+    const dateValue = dateFilter?.value || '';
+    const monthValue = monthFilter?.value || '';
+    const yearValue = yearFilter?.value || '';
+
+    rows.forEach(row => {
+        // Skip empty state row
+        if (row.cells.length === 1 && row.cells[0].colSpan === 8) return;
+
+        let showRow = true;
+        
+        // Search filter
+        if (searchTerm) {
+            let found = false;
+            row.querySelectorAll('td').forEach(cell => {
+                if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                    found = true;
+                }
+            });
+            showRow = found;
+        }
+
+        // Date filter
+        if ((dateValue || (monthValue && yearValue)) && showRow) {
+            const dateCell = row.querySelector('td:first-child');
+            if (!dateCell) return;
+            
+            const dateText = dateCell.textContent.trim();
+            const transactionDate = new Date(dateText);
+            const today = new Date();
+
+            if (monthValue && yearValue) {
+                // Handle month and year filtering
+                const selectedMonth = parseInt(monthValue) - 1; // Convert to 0-based month
+                const selectedYear = parseInt(yearValue);
+                
+                showRow = transactionDate.getFullYear() === selectedYear && 
+                         transactionDate.getMonth() === selectedMonth;
+            } else if (dateValue) {
+                switch(dateValue) {
+                    case 'today':
+                        showRow = isSameDay(transactionDate, today);
+                        break;
+                    case 'yesterday':
+                        const yesterday = new Date(today);
+                        yesterday.setDate(today.getDate() - 1);
+                        showRow = isSameDay(transactionDate, yesterday);
+                        break;
+                    case 'week':
+                        showRow = isThisWeek(transactionDate);
+                        break;
+                    case 'month':
+                        showRow = isSameMonth(transactionDate, today);
+                        break;
+                    case 'year':
+                        showRow = isThisYear(transactionDate);
+                        break;
+                }
+            }
+        }
+
+        row.style.display = showRow ? '' : 'none';
+    });
+
+    // Update empty state visibility
+    const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+    const emptyState = table.querySelector('tr[data-empty-state]');
+    if (emptyState) {
+        emptyState.style.display = visibleRows.length === 0 ? '' : 'none';
+    }
+}
+
+// Add isThisYear helper function after the existing helper functions
+function isThisYear(date) {
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear();
+}
+</script>
+
+<script>
+    // Add these new functions for modal handling
+    function openNewTransactionModal() {
+        const modal = document.getElementById('newTransactionModal');
+        const form = document.getElementById('newTransactionForm');
+        const quantityInput = form.querySelector('#newQuantityInput');
+        const medicationSearch = form.querySelector('#medicationSearch');
+        const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+        const newSearchIcon = document.getElementById('newSearchIcon');
+
+        // Show modal
+        modal.classList.remove('hidden');
+        
+        // Reset form
+        form.reset();
+        
+        // Set today's date and current time as default
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${year}-${month}-${day}`;
+        
+        // Set the date
+        const dateInput = form.querySelector('input[name="date"]');
+        dateInput.value = today;
+        
+        // Set the current time
+        const timeInput = form.querySelector('input[name="time_started"]');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        timeInput.value = `${hours}:${minutes}`;
+        
+        // Reset medication fields
+        if (medicationSearch) {
+            medicationSearch.value = '';
+        }
+        if (selectedMedicationInfo) {
+            selectedMedicationInfo.classList.add('hidden');
+        }
+        if (newSearchIcon) {
+            newSearchIcon.style.display = 'flex';
+        }
+        
+        // Disable and reset quantity input
+        if (quantityInput) {
+            quantityInput.disabled = true;
+            quantityInput.value = '0';
+        }
+        
+        // Reset selected medication
+        selectedMedication = null;
+        
+        // Load medications
+        loadMedications().catch(error => {
+            console.error('Error loading medications:', error);
+            showNotification('Failed to load medications', 'error');
+        });
+    }
+
+    function closeNewTransactionModal() {
+        const modal = document.getElementById('newTransactionModal');
+        modal.classList.add('hidden');
+        document.getElementById('newTransactionForm').reset();
+        // Reset medication selection
+        document.getElementById('selectedMedicationInfo').classList.add('hidden');
+        document.getElementById('newSearchIcon').style.display = 'flex';
+        document.getElementById('newQuantityInput').disabled = true;
+        selectedMedication = null;
+    }
+
+    // Add these new functions for the searchable medication dropdown
+    let medicationsList = [];
+    let selectedMedication = null;
+
+    function filterAndDisplayMedications(searchTerm, shouldShow = false) {
+        const dropdown = document.getElementById('medicationDropdown');
+        if (!dropdown) {
+            console.error('Dropdown element not found');
+            return;
+        }
+
+        const categories = {
+            'Medicines': medicationsList.filter(med => !['BOT', 'PCS', 'SET', 'BOX', 'PACK', 'ROLL', 'BAG'].includes(med.unit)),
+            'Supplies': medicationsList.filter(med => ['BOT', 'PCS', 'SET', 'BOX', 'PACK', 'ROLL', 'BAG'].includes(med.unit))
+        };
+
+        let html = '';
+        Object.entries(categories).forEach(([category, meds]) => {
+            const filteredMeds = meds.filter(med => 
+                med.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            if (filteredMeds.length > 0) {
+                html += `
+                    <div class="py-1">
+                        <div class="px-4 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">${category}</div>
+                        ${filteredMeds.map(med => {
+                            const currentBalance = med.balance || 0;
+                            const isOutOfStock = currentBalance <= 0;
+
+                            return `
+                                <div class="medication-option px-4 py-2.5 cursor-pointer hover:bg-blue-50 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}"
+                                     data-med-id="${med.id}"
+                                     data-med-name="${med.name}"
+                                     data-med-unit="${med.unit}"
+                                     data-med-stock="${currentBalance}"
+                                     onclick="${isOutOfStock ? '' : 'selectMedication(this)'}"
+                                     ${isOutOfStock ? 'disabled' : ''}>
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex-1 min-w-0 pr-4">
+                                            <span class="font-medium block truncate">${med.name}</span>
+                                            <span class="text-sm text-gray-500">${med.unit}</span>
+                                        </div>
+                                        <div class="text-sm whitespace-nowrap ${isOutOfStock ? 'text-red-600' : 'text-gray-500'}">
+                                            Stock: ${currentBalance}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        });
+
+        if (html === '') {
+            html = '<div class="px-4 py-3 text-sm text-gray-500">No medications found</div>';
+        }
+        
+        dropdown.innerHTML = html;
+        
+        // Only show dropdown if shouldShow is true
+        if (shouldShow) {
+            dropdown.classList.remove('hidden');
+        }
+
+        // Add click handlers for medication options
+        const options = dropdown.querySelectorAll('.medication-option:not([disabled])');
+        options.forEach(option => {
+            option.addEventListener('click', function() {
+                console.log('Medication option clicked:', {
+                    id: this.dataset.medId,
+                    name: this.dataset.medName,
+                    unit: this.dataset.medUnit,
+                    stock: this.dataset.medStock
+                });
+                selectMedication(this);
+            });
+        });
+    }
+
+    function initializeMedicationDropdown() {
+        const searchInput = document.getElementById('medicationSearch');
+        const dropdown = document.getElementById('medicationDropdown');
+        const searchIcon = document.getElementById('newSearchIcon');
+        const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+        const quantityInput = document.getElementById('newQuantityInput');
+        
+        if (!searchInput || !dropdown || !searchIcon || !selectedMedicationInfo || !quantityInput) {
+            console.error('Required elements not found:', {
+                searchInput: !!searchInput,
+                dropdown: !!dropdown,
+                searchIcon: !!searchIcon,
+                selectedMedicationInfo: !!selectedMedicationInfo,
+                quantityInput: !!quantityInput
+            });
+            return;
+        }
+
+        
+
+        // Initially hide the dropdown
+        dropdown.classList.add('hidden');
+
+        // Show dropdown on input focus
+        searchInput.addEventListener('focus', (e) => {
+            
+            filterAndDisplayMedications('', true); // Pass true to show dropdown
+        });
+
+        // Handle click outside to close dropdown
+        document.addEventListener('mousedown', (e) => {
+            const isSearchArea = e.target.closest('.medication-search-container');
+            const isDropdownOption = e.target.closest('.medication-option');
+            
+            if (!isSearchArea && !isDropdownOption) {
+                
+                dropdown.classList.add('hidden');
+            } else {
+                
+            }
+        });
+
+        // Handle search input and icon visibility
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value;
+            searchIcon.style.display = searchTerm ? 'none' : 'flex';
+            selectedMedicationInfo.classList.add('hidden');
+            
+            if (!searchTerm) {
+                quantityInput.value = '0';
+                quantityInput.disabled = true;
+            }
+            
+            if (searchTerm !== selectedMedication?.name?.toLowerCase()) {
+                document.getElementById('newSelectedMedication').value = '';
+                selectedMedication = null;
+                
+                const matchingMed = medicationsList.find(med => 
+                    med.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                if (!matchingMed) {
+                    quantityInput.value = '0';
+                    quantityInput.disabled = true;
+                }
+            }
+            
+            filterAndDisplayMedications(searchTerm, true); 
+        });
+
+        quantityInput.disabled = true;
+    }
+
+    // Update the loadMedications function
+    async function loadMedications() {
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const year = urlParams.get('year') || new Date().getFullYear().toString();
+            const month = urlParams.get('month') || (new Date().getMonth() + 1).toString().padStart(2, '0');
+
+            const response = await fetch(`/api/medicines/current?year=${year}&month=${month}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch medicines');
+            }
+
+            const data = await response.json();
+            medicationsList = data;
+            
+            initializeMedicationDropdown();
+            
+            return data;
+        } catch (error) {
+            showNotification('Failed to load medications', 'error');
+            throw error;
+        }
+    }
+
+    function selectMedication(option) {
+        // Get medication data from the option
+        const medId = option.dataset.medId;
+        const medName = option.dataset.medName;
+        const medUnit = option.dataset.medUnit;
+        const medStock = parseInt(option.dataset.medStock) || 0;
+
+        console.log('Selected Medication Data:', {
+            id: medId,
+            name: medName,
+            unit: medUnit,
+            stock: medStock
+        });
+
+        // Update hidden input with medication name (not ID)
+        const hiddenInput = document.getElementById('newSelectedMedication');
+        hiddenInput.value = medName;
+        
+        
+        // Update search input
+        const searchInput = document.getElementById('medicationSearch');
+        searchInput.value = `${medName} (${medUnit})`;
+        
+        
+        // Hide search icon
+        const newSearchIcon = document.getElementById('newSearchIcon');
+        newSearchIcon.style.display = 'none';
+        
+        // Update stock info
+        const selectedMedStock = document.getElementById('selectedMedStock');
+        const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+        selectedMedStock.textContent = `${medStock} ${medUnit}`;
+        selectedMedicationInfo.classList.remove('hidden');
+        
+        // Enable quantity input
+        const quantityInput = document.getElementById('newQuantityInput');
+        quantityInput.disabled = false;
+        quantityInput.value = '1';
+        quantityInput.min = '1';
+        quantityInput.max = medStock;
+        
+        // Hide dropdown
+        const medicationDropdown = document.getElementById('medicationDropdown');
+        medicationDropdown.classList.add('hidden');
+
+        // Log the final form state
+        const form = document.getElementById('newTransactionForm');
+        const formData = new FormData(form);
+        console.log('Current form data:', Object.fromEntries(formData));
+    }
+
+    // Add event listener for medication search input
+    document.getElementById('medicationSearch').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const quantityInput = document.getElementById('newQuantityInput');
+        
+        // If search is cleared, disable quantity input
+        if (!searchTerm) {
+            quantityInput.disabled = true;
+            quantityInput.value = '0';
+            document.getElementById('selectedMedicationInfo').classList.add('hidden');
+            document.getElementById('newSearchIcon').style.display = 'flex';
+        }
+    });
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('newTransactionForm');
+        const quantityInput = form.querySelector('#newQuantityInput');
+        const medicationSearch = form.querySelector('#medicationSearch');
+        
+        if (quantityInput && medicationSearch) {
+            // Ensure quantity is disabled initially
+            quantityInput.disabled = true;
+            quantityInput.value = '0';
+            
+            // Clear medication search
+            medicationSearch.value = '';
+            document.getElementById('selectedMedicationInfo').classList.add('hidden');
+            document.getElementById('newSearchIcon').style.display = 'flex';
+        }
+    });
+
+    // Update form submission handler
+    document.getElementById('newTransactionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+        
+        
+
+        // Get the medication name from the hidden input
+        const medicationName = document.getElementById('newSelectedMedication').value;
+        
+
+        // If medication is selected, ensure it's included in the data
+        if (medicationName && medicationName.trim() !== '') {
+            data.medication = medicationName;
+            
+        } else {
+            data.medication = null;
+            data.quantity = 0;
+            
+        }
+
+        
+
+        try {
+            const response = await fetch('/transactions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(data)
+            });
+
+            
+            const result = await response.json();
+            
+
+            if (result.success) {
+                
+                closeNewTransactionModal();
+                window.location.reload();
+            } else {
+                throw new Error(result.error || 'Failed to create transaction');
+            }
+        } catch (error) {
+            console.error('Error creating transaction:', error);
+            showNotification(error.message, 'error');
+        }
+    });
+
+    // Update the medication selection function
+    function selectMedication(option) {
+        
+        
+        // Get medication data from the option
+        const medId = option.dataset.medId;
+        const medName = option.dataset.medName;
+        const medUnit = option.dataset.medUnit;
+        const medStock = parseInt(option.dataset.medStock) || 0;
+
+        console.log('Selected Medication:', {
+            id: medId,
+            name: medName,
+            unit: medUnit,
+            stock: medStock
+        });
+
+        // Get all required elements
+        const form = document.getElementById('newTransactionForm');
+        const hiddenInput = form.querySelector('input[name="medication"]');
+        const searchInput = document.getElementById('medicationSearch');
+        const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+        const selectedMedStock = document.getElementById('selectedMedStock');
+        const newSearchIcon = document.getElementById('newSearchIcon');
+        const medicationDropdown = document.getElementById('medicationDropdown');
+        const quantityInput = document.getElementById('newQuantityInput');
+
+        // Update hidden input with medication name
+        hiddenInput.value = medName;
+        
+
+        // Update search input display
+        searchInput.value = `${medName} (${medUnit})`;
+        
+
+        // Update stock info
+        selectedMedStock.textContent = `${medStock} ${medUnit}`;
+        selectedMedicationInfo.classList.remove('hidden');
+        
+
+        // Configure quantity input
+        quantityInput.disabled = false;
+        quantityInput.value = '1';
+        quantityInput.min = '1';
+        quantityInput.max = medStock;
+        console.log('Quantity input configured:', {
+            disabled: false,
+            value: 1,
+            min: 1,
+            max: medStock
+        });
+
+        // Update UI state
+        newSearchIcon.style.display = 'none';
+        medicationDropdown.classList.add('hidden');
+
+        // Log the final form state
+        const formData = new FormData(form);
+        const finalData = Object.fromEntries(formData);
+        
+        
+    }
+
+    // Update the loadMedications function
+    async function loadMedications() {
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const year = urlParams.get('year') || new Date().getFullYear().toString();
+            const month = urlParams.get('month') || (new Date().getMonth() + 1).toString().padStart(2, '0');
+
+            
+
+            const response = await fetch(`/api/medicines/current?year=${year}&month=${month}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            
+            const data = await response.json();
+            
+
+            medicationsList = data;
+            return data;
+        } catch (error) {
+            console.error('Error loading medications:', error);
+            throw error;
+        }
+    }
+</script>
+
+<script>
+    // Check for openModal parameter and open modal if present
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('openModal') === 'true') {
+            openNewTransactionModal();
+            // Remove the parameter from URL without refreshing
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+    });
+</script>
+
+<script>
+let currentTransactionId = null;
+
+// Edit Transaction Functions
+function openEditTransactionModal(transactionId) {
+    currentTransactionId = transactionId;
+    
+    // Fetch transaction details
+    fetch(`/transactions/${transactionId}/edit`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(transaction => {
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+
+        // Check if this is a treatment transaction
+        const isTreatment = transaction.medication === '' || !transaction.medication;
+        
+        if (isTreatment) {
+            // Extract treatment text and additional remarks from the remarks field
+            let treatmentText = '';
+            let additionalRemarks = '';
+            
+            if (transaction.remarks) {
+                if (transaction.remarks.includes('Treatment/Advice: ')) {
+                    const parts = transaction.remarks.split('\n\nAdditional Remarks: ');
+                    treatmentText = parts[0].replace('Treatment/Advice: ', '');
+                    additionalRemarks = parts[1] || '';
+                } else {
+                    // If old format, use entire remarks as treatment text
+                    treatmentText = transaction.remarks;
+                }
+            }
+            
+            // Populate treatment form fields
+            document.getElementById('editTreatmentId').value = transaction.id;
+            document.getElementById('editTreatmentDate').value = transaction.date;
+            document.getElementById('editTreatmentTimeStarted').value = transaction.time_started;
+            document.getElementById('editTreatmentPatientName').value = transaction.patient_name;
+            document.getElementById('editTreatmentCourseYearSection').value = transaction.course_year_section;
+            document.getElementById('editTreatmentComplaints').value = transaction.complaints;
+            document.getElementById('editTreatmentText').value = treatmentText;
+            document.getElementById('editTreatmentRemarks').value = additionalRemarks;
+            
+            // Show treatment modal
+            document.getElementById('editTreatmentModal').classList.remove('hidden');
+        } else {
+            // Populate medication form fields
+            document.getElementById('editTransactionId').value = transaction.id;
+            document.getElementById('editDate').value = transaction.date;
+            document.getElementById('editTimeStarted').value = transaction.time_started;
+            document.getElementById('editPatientName').value = transaction.patient_name;
+            document.getElementById('editCourseYearSection').value = transaction.course_year_section;
+            document.getElementById('editComplaints').value = transaction.complaints;
+            document.getElementById('editMedicationSearch').value = transaction.medication || '';
+            document.getElementById('editQuantity').value = transaction.quantity || 0;
+            document.getElementById('editRemarks').value = transaction.remarks || '';
+            
+            // Show medication modal
+            document.getElementById('editTransactionModal').classList.remove('hidden');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error fetching transaction details: ' + error.message, 'error');
+    });
+}
+
+function closeEditTransactionModal() {
+    document.getElementById('editTransactionModal').classList.add('hidden');
+    document.getElementById('editTransactionForm').reset();
+    currentTransactionId = null;
+}
+
+// Handle edit form submission
+document.getElementById('editTransactionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Add loading state to submit button
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalContent = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = `
+        <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Saving...`;
+
+    try {
+        // Get the medication value from the search input
+        const medicationInput = document.getElementById('editMedicationSearch');
+        data.medication = medicationInput.value.trim();
+
+        // Send the update request
+        fetch(`/transactions/${currentTransactionId}/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.error || 'Failed to update transaction');
+                    });
+                } else {
+                    throw new Error('Failed to update transaction');
+                }
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                closeEditTransactionModal();
+                window.location.reload();
+                const url = new URL(window.location);
+                url.searchParams.set('notification', 'Transaction updated successfully');
+                url.searchParams.set('notificationType', 'success');
+                window.location.href = url.toString();
+            } else {
+                throw new Error(result.error || 'Failed to update transaction');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification(error.message, 'error');
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalContent;
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error updating transaction: ' + error.message, 'error');
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalContent;
+    }
+});
+
+// Delete Transaction Functions
+function openDeleteTransactionModal(transactionId) {
+    currentTransactionId = transactionId;
+    document.getElementById('deleteTransactionModal').classList.remove('hidden');
+    // Reset the form when opening the modal
+    document.getElementById('deleteTransactionForm').reset();
+}
+
+function closeDeleteTransactionModal() {
+    document.getElementById('deleteTransactionModal').classList.add('hidden');
+    currentTransactionId = null;
+}
+
+// Handle delete form submission
+document.getElementById('deleteTransactionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const password = document.getElementById('deletePassword').value;
+    
+    // Add loading state to submit button
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalContent = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = `
+        <svg class="animate-spin h-5 w-5 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Deleting...`;
+
+    // First verify the password
+    fetch('/auth/verify-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ password })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            throw new Error('Incorrect password');
+        }
+
+        // If password is correct, proceed with deletion
+        return fetch(`/transactions/${currentTransactionId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        });
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(errorData => {
+                throw new Error(errorData.error || 'Failed to delete transaction');
+            });
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            closeDeleteTransactionModal();
+            window.location.reload();
+            const url = new URL(window.location);
+            url.searchParams.set('notification', 'Transaction deleted successfully');
+            url.searchParams.set('notificationType', 'success');
+            window.location.href = url.toString();
+        } else {
+            throw new Error(result.error || 'Failed to delete transaction');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification(error.message, 'error');
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalContent;
+    });
+});
+
+</script> 
+
+<script>
+// ... existing script code ...
+
+// Add this function to handle the transaction report dropdown toggle
+function toggleTransactionReportDropdown() {
+    const dropdown = document.getElementById('transactionReportDropdown');
+    dropdown.classList.toggle('hidden');
+
+    // Close dropdown when clicking outside
+    const closeDropdown = (e) => {
+        if (!e.target.closest('#transactionReportDropdown') && !e.target.closest('button[onclick="toggleTransactionReportDropdown()"]')) {
+            dropdown.classList.add('hidden');
+            document.removeEventListener('mousedown', closeDropdown);
+        }
+    };
+
+    // Add event listener immediately
+    document.addEventListener('mousedown', closeDropdown);
+}
+
+const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+// Transaction Report PDF
+async function generateTransactionPdf(isDownload = false) {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true,
+            putOnlyUsedFonts: true,
+            precision: 2,
+            floatPrecision: 2
+        });
+
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+
+        // LSPU header
+        doc.addImage('/images/lspu-logo.png', 'PNG', 40, 10, 20, 20);
+        doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 60, 10, 20.8, 20);
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Republic of the Philippines', pageWidth / 2, 15, { align: 'center' });
+
+        doc.setFontSize(16);
+        // Register font - silently catch PubSub error
+        try {
+            if (window.canterburyFontData) {
+                doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+                doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+            }
+        } catch (error) {
+        }
+
+        // Use font - separate try-catch
+        try {
+            doc.setFont('Canterbury', 'normal');
+            doc.text('Laguna State Polytechnic University', pageWidth / 2, 21, { align: 'center' });
+        } catch (error) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Laguna State Polytechnic University', pageWidth / 2, 21, { align: 'center' });
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Province of Laguna', pageWidth / 2, 27, { align: 'center' });
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Medical Transactions Report', pageWidth / 2, 40, { align: 'center' });
+
+        const table = document.getElementById('finishedTransactionsTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr')).filter(row => 
+                window.getComputedStyle(row).display !== 'none' && 
+            row.cells.length > 1
+        );
+
+        const tableData = rows.map(row => {
+            const cells = Array.from(row.cells);
+            const timeCell = cells[4].textContent.trim();
+            const times = timeCell.split('-').map(t => t.trim());
+            const formattedTime = times.length > 1 ? `${times[0]} - ${times[1]}` : timeCell;
+            
+            return [
+                cells[0].textContent.trim(), // Date
+                cells[1].textContent.trim(), // Patient
+                cells[2].textContent.trim(), // Course/Year/Sec
+                cells[3].textContent.trim(), // Complaints
+                formattedTime,               // Time (formatted)
+                cells[5].textContent.trim(), // Medication/Treatment
+                cells[6].textContent.trim(), // Qty
+                cells[7].textContent.trim()  // Remarks
+            ];
+        });
+
+        doc.autoTable({
+            startY: 50,
+            head: [['Date', 'Patient', 'Course/Year/Sec', 'Complaints', 'Time', 'Medication/Treatment', 'Qty', 'Remarks']],
+            body: tableData,
+            theme: 'grid',
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 2,
+                overflow: 'linebreak',
+                halign: 'center',
+                valign: 'middle'
+            },
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [50, 50, 50],
+                fontSize: 8,
+                font: 'helvetica',
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { cellWidth: 20 }, // Date
+                1: { cellWidth: 30 }, // Patient
+                2: { cellWidth: 25 }, // Course/Year/Sec
+                3: { cellWidth: 30 }, // Complaints
+                4: { cellWidth: 25 }, // Time (increased width for combined format)
+                5: { cellWidth: 30 }, // Medication/Treatment
+                6: { cellWidth: 10 }, // Qty
+                7: { cellWidth: 20 }  // Remarks
+            },
+            margin: { 
+                top: 70,
+                left: 10,
+                right: 10,
+                bottom: 40
+            },
+            didDrawPage: function(data) {
+                if (data.pageCount > 1) {
+                    doc.setFontSize(8);
+                    doc.text(`Page ${data.pageCount}`, doc.internal.pageSize.width - 20, pageHeight - margins.bottom);
+                }
+
+                const footerY = pageHeight - 5;
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'normal');
+                doc.text('The report has been automatically generated by the system based on the recorded data.', 15, footerY - 10);
+                doc.text('LSPU-OSAS-SF-M10', 15, footerY - 3);
+                doc.text('Rev. 0', pageWidth / 2, footerY - 3, { align: 'center' });
+                doc.text('10 Aug. 2016', pageWidth - 15, footerY - 3, { align: 'right' });
+            },
+            willDrawCell: function(data) {
+                const footerSpace = 30; 
+                if (data.row.y + data.row.height > pageHeight - footerSpace) {
+                    doc.addPage();
+                    data.cursor.y = 25; 
+                }
+            }
+        });
+
+        const finalY = doc.autoTable.previous.finalY + 30;
+        addSignatures(doc, finalY);
+
+        const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        if (isDownload) {
+            const currentDate = new Date();
+            const dateForFilename = currentDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `Medical_Transactions_Report_${dateForFilename.replace(/,/g, '').replace(/ /g, '_')}.pdf`;
+            link.click();
+            showNotification('Report downloaded successfully', 'success');
+        } else {
+            window.open(blobUrl, '_blank');
+            showNotification('Report opened in new tab', 'success');
+        }
+        
+        // Clean up
+        setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+    } catch (error) {
+        console.error('PDF Generation Error:', error);
+        showNotification('Error generating PDF: ' + error.message, 'error');
+    }
+}
+
+</script> 
+
+<!-- Edit Treatment Transaction Modal -->
+<div id="editTreatmentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex flex-col space-y-4">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b pb-4">
+                <h3 class="text-xl font-semibold text-gray-900">Edit Treatment</h3>
+                <button onclick="closeEditTreatmentModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="editTreatmentForm" class="space-y-4">
+                <input type="hidden" id="editTreatmentId" name="id">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" id="editTreatmentDate" name="date" required
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Time Started -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Time Started</label>
+                        <input type="time" id="editTreatmentTimeStarted" name="time_started" required
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Patient Name -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                        <input type="text" id="editTreatmentPatientName" name="patient_name" required placeholder="Enter patient name"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Course/Year/Section -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Course/Year/Section</label>
+                        <input type="text" id="editTreatmentCourseYearSection" name="course_year_section" required placeholder="e.g., BSIT 2-1"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Complaints -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Complaints</label>
+                        <textarea id="editTreatmentComplaints" name="complaints" required placeholder="Enter patient complaints"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+
+                    <!-- Treatment/Advice -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Treatment/Advice</label>
+                        <textarea id="editTreatmentText" name="treatment_text" required placeholder="Enter treatment or advice given"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+
+                    <!-- Additional Remarks -->
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Additional Remarks (Optional)</label>
+                        <textarea id="editTreatmentRemarks" name="remarks" placeholder="Enter any additional remarks"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeEditTreatmentModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Edit Transaction Functions
+function openEditTransactionModal(transactionId) {
+    currentTransactionId = transactionId;
+    
+    // Fetch transaction details
+    fetch(`/transactions/${transactionId}/edit`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(transaction => {
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+
+        // Check if this is a treatment transaction
+        const isTreatment = transaction.medication === '' || !transaction.medication;
+        
+        if (isTreatment) {
+            // Extract treatment text and additional remarks from the remarks field
+            let treatmentText = '';
+            let additionalRemarks = '';
+            
+            if (transaction.remarks) {
+                if (transaction.remarks.includes('Treatment/Advice: ')) {
+                    const parts = transaction.remarks.split('\n\nAdditional Remarks: ');
+                    treatmentText = parts[0].replace('Treatment/Advice: ', '');
+                    additionalRemarks = parts[1] || '';
+                } else {
+                    // If old format, use entire remarks as treatment text
+                    treatmentText = transaction.remarks;
+                }
+            }
+            
+            // Populate treatment form fields
+            document.getElementById('editTreatmentId').value = transaction.id;
+            document.getElementById('editTreatmentDate').value = transaction.date;
+            document.getElementById('editTreatmentTimeStarted').value = transaction.time_started;
+            document.getElementById('editTreatmentPatientName').value = transaction.patient_name;
+            document.getElementById('editTreatmentCourseYearSection').value = transaction.course_year_section;
+            document.getElementById('editTreatmentComplaints').value = transaction.complaints;
+            document.getElementById('editTreatmentText').value = treatmentText;
+            document.getElementById('editTreatmentRemarks').value = additionalRemarks;
+            
+            // Show treatment modal
+            document.getElementById('editTreatmentModal').classList.remove('hidden');
+        } else {
+            // Populate medication form fields
+            document.getElementById('editTransactionId').value = transaction.id;
+            document.getElementById('editDate').value = transaction.date;
+            document.getElementById('editTimeStarted').value = transaction.time_started;
+            document.getElementById('editPatientName').value = transaction.patient_name;
+            document.getElementById('editCourseYearSection').value = transaction.course_year_section;
+            document.getElementById('editComplaints').value = transaction.complaints;
+            document.getElementById('editMedicationSearch').value = transaction.medication || '';
+            document.getElementById('editQuantity').value = transaction.quantity || 0;
+            document.getElementById('editRemarks').value = transaction.remarks || '';
+            
+            // Show medication modal
+            document.getElementById('editTransactionModal').classList.remove('hidden');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error fetching transaction details: ' + error.message, 'error');
+    });
+}
+
+function closeEditTreatmentModal() {
+    document.getElementById('editTreatmentModal').classList.add('hidden');
+    document.getElementById('editTreatmentForm').reset();
+    currentTransactionId = null;
+}
+
+document.getElementById('editTreatmentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalContent = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = `
+        <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Saving...`;
+
+    try {
+        const treatmentText = data.treatment_text;
+        const existingRemarks = data.remarks;
+
+        data.medication = '';  
+        data.quantity = 0;    
+
+        data.remarks = `Treatment/Advice: ${treatmentText}${existingRemarks ? '\n\nAdditional Remarks: ' + existingRemarks : ''}`;
+
+        delete data.treatment_text;
+
+        fetch(`/transactions/${currentTransactionId}/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.error || 'Failed to update transaction');
+                    });
+                } else {
+                    throw new Error('Failed to update transaction');
+                }
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                closeEditTreatmentModal();
+                window.location.reload();
+                const url = new URL(window.location);
+                url.searchParams.set('notification', 'Transaction updated successfully');
+                url.searchParams.set('notificationType', 'success');
+                window.location.href = url.toString();
+            } else {
+                throw new Error(result.error || 'Failed to update transaction');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification(error.message, 'error');
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalContent;
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error updating transaction: ' + error.message, 'error');
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalContent;
+    }
+});
+
+document.getElementById('editMedicationSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const dropdown = document.getElementById('editMedicationDropdown');
+    
+    if (searchTerm.length > 0) {
+        dropdown.classList.remove('hidden');
+        dropdown.innerHTML = `
+            <div class="px-4 py-2 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>
+                Searching...
+            </div>
+        `;
+
+        const now = new Date();
+        const year = now.getFullYear().toString();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+   
+        fetch(`/api/medicines/current?year=${year}&month=${month}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch medications');
+                }
+                return response.json();
+            })
+            .then(medicines => {
+                dropdown.innerHTML = '';
+
+                const filteredMedicines = medicines.filter(medicine => 
+                    medicine.name.toLowerCase().includes(searchTerm)
+                );
+                
+                if (filteredMedicines.length === 0) {
+                    dropdown.innerHTML = `
+                        <div class="px-4 py-2 text-gray-500">
+                            No medications found
+                        </div>
+                    `;
+                    return;
+                }
+                
+                filteredMedicines.forEach(medicine => {
+                    const option = document.createElement('div');
+                    option.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer';
+                    option.innerHTML = `
+                        <div class="font-medium">${medicine.name}</div>
+                        <div class="text-sm text-gray-600">Stock: ${medicine.balance} ${medicine.unit}</div>
+                    `;
+                    option.onclick = () => selectEditMedication({
+                        name: medicine.name,
+                        current_stock: medicine.balance,
+                        unit: medicine.unit
+                    });
+                    dropdown.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error searching medications:', error);
+                dropdown.innerHTML = `
+                    <div class="px-4 py-2 text-red-500">
+                        Error searching medications. Please try again.
+                    </div>
+                `;
+            });
+    } else {
+        dropdown.classList.add('hidden');
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('editMedicationDropdown');
+    const searchInput = document.getElementById('editMedicationSearch');
+    
+    if (!searchInput.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+function selectEditMedication(medicine) {
+    const searchInput = document.getElementById('editMedicationSearch');
+    const dropdown = document.getElementById('editMedicationDropdown');
+    const selectedMedication = document.getElementById('editSelectedMedication');
+    const quantityInput = document.getElementById('editQuantity');
+    const stockInfo = document.getElementById('editSelectedMedicationInfo');
+    const stockValue = document.getElementById('editSelectedMedStock');
+    const searchIcon = document.getElementById('editSearchIcon');
+    
+    searchInput.value = medicine.name;
+    selectedMedication.value = medicine.name;
+    dropdown.classList.add('hidden');
+
+    quantityInput.disabled = false;
+    quantityInput.max = medicine.current_stock;
+    stockInfo.classList.remove('hidden');
+    stockValue.textContent = `${medicine.current_stock} ${medicine.unit}`;
+
+    searchIcon.style.display = 'none';
+}
+</script> 
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityInput = document.getElementById('newQuantityInput');
+    if (quantityInput) {
+        quantityInput.disabled = true;
+        quantityInput.value = '0';
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const medicationSearch = document.getElementById('medicationSearch');
+    const medicationDropdown = document.getElementById('medicationDropdown');
+    const quantityInput = document.getElementById('newQuantityInput');
+
+    if (medicationSearch) {
+        medicationSearch.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm.length > 0) {
+                medicationDropdown.classList.remove('hidden');
+                filterAndDisplayMedications(searchTerm, true);
+            } else {
+                medicationDropdown.classList.add('hidden');
+                if (quantityInput) {
+                    quantityInput.disabled = true;
+                    quantityInput.value = '0';
+                }
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!medicationSearch.contains(e.target) && !medicationDropdown.contains(e.target)) {
+                medicationDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    if (quantityInput) {
+        quantityInput.disabled = true;
+        quantityInput.value = '0';
+    }
+});
+</script>
+
+<script>
+function selectMedication(option) {
+    
+
+    const medId = option.dataset.medId;
+    const medName = option.dataset.medName;
+    const medUnit = option.dataset.medUnit;
+    const medStock = parseInt(option.dataset.medStock) || 0;
+
+    console.log('Selected Medication:', {
+        id: medId,
+        name: medName,
+        unit: medUnit,
+        stock: medStock
+    });
+
+    const form = document.getElementById('newTransactionForm');
+    const hiddenInput = form.querySelector('input[name="medication"]');
+    const searchInput = document.getElementById('medicationSearch');
+    const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+    const selectedMedStock = document.getElementById('selectedMedStock');
+    const newSearchIcon = document.getElementById('newSearchIcon');
+    const medicationDropdown = document.getElementById('medicationDropdown');
+    const quantityInput = document.getElementById('newQuantityInput');
+
+    hiddenInput.value = medId;
+    
+
+    searchInput.value = `${medName} (${medUnit})`;
+    
+
+    selectedMedStock.textContent = `${medStock} ${medUnit}`;
+    selectedMedicationInfo.classList.remove('hidden');
+    
+
+    quantityInput.disabled = false;
+    quantityInput.value = '1';
+    quantityInput.min = '1';
+    quantityInput.max = medStock;
+    console.log('Quantity input configured:', {
+        disabled: false,
+        value: 1,
+        min: 1,
+        max: medStock
+    });
+
+    newSearchIcon.style.display = 'none';
+    medicationDropdown.classList.add('hidden');
+
+    const formData = new FormData(form);
+    const finalData = Object.fromEntries(formData);
+    
+    
+}
+
+function openNewTransactionModal() {
+    const modal = document.getElementById('newTransactionModal');
+    const form = document.getElementById('newTransactionForm');
+    const quantityInput = document.getElementById('newQuantityInput');
+    const medicationSearch = document.getElementById('medicationSearch');
+    const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+    const newSearchIcon = document.getElementById('newSearchIcon');
+
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Reset form
+    form.reset();
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const time = now.toTimeString().slice(0,5);
+
+    form.querySelector('input[name="date"]').value = today;
+    form.querySelector('input[name="time_started"]').value = time;
+
+    medicationSearch.value = '';
+    selectedMedicationInfo.classList.add('hidden');
+    newSearchIcon.style.display = 'flex';
+
+    quantityInput.disabled = true;
+    quantityInput.value = '0';
+
+    loadMedications();
+}
+
+function closeNewTransactionModal() {
+    const modal = document.getElementById('newTransactionModal');
+    const form = document.getElementById('newTransactionForm');
+    const quantityInput = document.getElementById('newQuantityInput');
+    const selectedMedicationInfo = document.getElementById('selectedMedicationInfo');
+    const newSearchIcon = document.getElementById('newSearchIcon');
+
+    modal.classList.add('hidden');
+    form.reset();
+    selectedMedicationInfo.classList.add('hidden');
+    newSearchIcon.style.display = 'flex';
+    quantityInput.disabled = true;
+    quantityInput.value = '0';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const medicationSearch = document.getElementById('medicationSearch');
+    const quantityInput = document.getElementById('newQuantityInput');
+    
+    medicationSearch.addEventListener('input', function(e) {
+        const searchTerm = e.target.value;
+        if (!searchTerm) {
+            quantityInput.disabled = true;
+            quantityInput.value = '0';
+            document.getElementById('selectedMedicationInfo').classList.add('hidden');
+            document.getElementById('newSearchIcon').style.display = 'flex';
+        }
+    });
+});
+
+medicationSearch.addEventListener('focus', function(e) {
+    
+    filterAndDisplayMedications('', true);
+    medicationDropdown.classList.remove('hidden');
+});
+
+medicationSearch.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    
+
+    medicationDropdown.classList.remove('hidden');
+    filterAndDisplayMedications(searchTerm, true);
+
+    if (!searchTerm) {
+        quantityInput.disabled = true;
+        quantityInput.value = '0';
+        document.getElementById('selectedMedicationInfo').classList.add('hidden');
+        document.getElementById('newSearchIcon').style.display = 'flex';
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (!medicationSearch.contains(e.target) && !medicationDropdown.contains(e.target)) {
+        medicationDropdown.classList.add('hidden');
+    }
+});
+</script>
+
+<script>
+
+function toggleQuarterlyReportDropdown() {
+    const dropdown = document.getElementById('quarterlyReportDropdown');
+    dropdown.classList.toggle('hidden');
+
+    const closeDropdown = (e) => {
+        if (!e.target.closest('#quarterlyReportDropdown') && !e.target.closest('button[onclick="toggleQuarterlyReportDropdown()"]')) {
+            dropdown.classList.add('hidden');
+            document.removeEventListener('mousedown', closeDropdown);
+        }
+    };
+
+    setTimeout(() => {
+        document.addEventListener('mousedown', closeDropdown);
+    }, 100);
+}
+
+async function generateQuarterlyReport(isDownload = false) {
+    try {
+        const yearFilter = document.getElementById('finishedFilterYear');
+        const selectedYear = yearFilter.value || new Date().getFullYear().toString();
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true,
+            putOnlyUsedFonts: true,
+            precision: 2,
+            floatPrecision: 2
+        });
+
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+
+        // LSPU header
+        doc.addImage('/images/lspu-logo.png', 'PNG', 40, 10, 20, 20);
+        doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 60, 10, 20.8, 20);
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Republic of the Philippines', pageWidth / 2, 15, { align: 'center' });
+
+        doc.setFontSize(16);
+        let useCanterbury = false;
+        try {
+            if (window.canterburyFontData) {
+                doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+                doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+                const fonts = doc.getFontList();
+                if (fonts['Canterbury']) {
+                    useCanterbury = true;
+                }
+            }
+        } catch (error) {
+            // Silent catch - font not compatible
+        }
+
+        try {
+            if (useCanterbury) {
+                doc.setFont('Canterbury', 'normal');
+            } else {
+                doc.setFont('helvetica', 'bold');
+            }
+            doc.text('Laguna State Polytechnic University', pageWidth / 2, 21, { align: 'center' });
+        } catch (error) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Laguna State Polytechnic University', pageWidth / 2, 21, { align: 'center' });
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Province of Laguna', pageWidth / 2, 27, { align: 'center' });
+
+        // Add report title
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'normal');
+        const quarterNumber = Math.floor((new Date().getMonth()) / 3) + 1;
+        const quarterText = getQuarterText(quarterNumber);
+        
+        // Safer text width calculation
+        let titleText = `${quarterText.number}${quarterText.suffix} QUARTER REPORT ${selectedYear}`;
+        doc.text(titleText, pageWidth / 2, 40, { align: 'center' });
+
+        const table = document.getElementById('finishedTransactionsTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr')).filter(row => 
+            window.getComputedStyle(row).display !== 'none' &&
+            row.cells.length > 1
+        );
+
+        const { allData, top10Data } = processTransactionsForQuarter(rows, quarterNumber, selectedYear);
+
+        doc.autoTable({
+            startY: 50,
+            head: [['CASES/ILLNESS', ...getQuarterMonths(quarterNumber), 'TOTAL']],
+            body: allData,
+            theme: 'grid',
+            styles: {
+                font: 'helvetica',
+                fontSize: 9,
+                cellPadding: 2,
+                overflow: 'linebreak',
+                halign: 'left'
+            },
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [50, 50, 50],
+                fontSize: 9,
+                font: 'helvetica',
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { cellWidth: 70 },
+                1: { cellWidth: 30, halign: 'center' },
+                2: { cellWidth: 30, halign: 'center' },
+                3: { cellWidth: 30, halign: 'center' },
+                4: { cellWidth: 30, halign: 'center' }
+            },
+            margin: { 
+                top: 15,
+                left: 10,
+                right: 10,
+                bottom: 40
+            },
+            didDrawPage: function(data) {
+                if (data.pageNumber > 1) {
+                    doc.autoTable.previous.finalY = 15;
+                }
+
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'normal');
+                doc.text('The report has been automatically generated by the system based on the recorded data.', 15, pageHeight - 15);
+                doc.text('LSPU-OSAS-SF-M10', 15, pageHeight - 8);
+                doc.text('Rev. 0', pageWidth / 2, pageHeight - 8, { align: 'center' });
+                doc.text('10 Aug. 2016', pageWidth - 15, pageHeight - 8, { align: 'right' });
+            }
+        });
+
+        // Add content after the table
+        const finalY = doc.autoTable.previous.finalY + 30;
+
+        if (top10Data && top10Data.length > 0) {
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold'); 
+            doc.text(`TOP 10 ILLNESS ${selectedYear}`, pageWidth / 2, finalY, { align: 'center' });
+            doc.text(`${quarterText.number}${quarterText.suffix} QUARTER`, pageWidth / 2, finalY + 5, { align: 'center' });
+
+            const chartStartY = finalY + 15;
+            const maxValue = Math.max(...top10Data.map(row => row[4]));
+            const bottomY = drawColumnChart(doc, top10Data, chartStartY, maxValue, pageWidth);
+            addSignatures(doc, bottomY + 25);
+        } else {
+            // If no data, just add signatures below the table
+            addSignatures(doc, finalY);
+        }
+
+        // Create blob and handle preview/download
+        const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        if (isDownload) {
+            const currentDate = new Date();
+            const dateForFilename = currentDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `Quarterly_Report_Q${quarterNumber}_${selectedYear}.pdf`;
+            link.click();
+            showNotification('Report downloaded successfully', 'success');
+        } else {
+            window.open(blobUrl, '_blank');
+            showNotification('Report opened in new tab', 'success');
+        }
+
+        // Clean up
+        setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+    } catch (error) {
+        console.error('PDF Generation Error:', error);
+        showNotification('Error generating PDF: ' + error.message, 'error');
+    }
+}
+
+// Helper function to get quarter months
+function getQuarterMonths(quarter) {
+    const quarters = {
+        1: ['JANUARY', 'FEBRUARY', 'MARCH'],
+        2: ['APRIL', 'MAY', 'JUNE'],
+        3: ['JULY', 'AUGUST', 'SEPTEMBER'],
+        4: ['OCTOBER', 'NOVEMBER', 'DECEMBER']
+    };
+    return quarters[quarter] || [];
+}
+
+// Helper function to get quarter text
+function getQuarterText(quarter) {
+    const numbers = ['1', '2', '3', '4'];
+    const suffixes = ['st', 'nd', 'rd', 'th'];
+    const index = quarter - 1;
+    if (index >= 0 && index < numbers.length) {
+        return {
+            number: numbers[index],
+            suffix: suffixes[index]
+        };
+    }
+    return { number: '', suffix: '' };
+}
+
+// Helper function to process transactions for quarterly report
+function processTransactionsForQuarter(rows, quarter, year) {
+    // Initialize cases/illness tracking
+    const cases = {};
+    const quarterMonths = getQuarterMonths(quarter);
+    const monthIndices = quarterMonths.map(month => {
+        const monthIndex = monthNames.findIndex(name => name.toUpperCase() === month);
+        return monthIndex;
+    });
+
+    // Process each transaction
+    rows.forEach(row => {
+        const dateCell = row.cells[0].textContent.trim();
+        const transactionDate = new Date(dateCell);
+        const complaintsCell = row.cells[3].textContent.trim();
+
+        // Check if transaction is in the selected quarter and year
+        if (transactionDate.getFullYear().toString() === year &&
+            monthIndices.includes(transactionDate.getMonth())) {
+            
+            // Split multiple complaints if any and clean up the text
+            const complaintsList = complaintsCell
+                .split(/[,;]/) // Split by comma or semicolon
+                .map(c => c.trim().toUpperCase())
+                .filter(c => c.length > 0); // Remove empty strings
+            
+            complaintsList.forEach(complaint => {
+                if (!cases[complaint]) {
+                    cases[complaint] = {
+                        name: complaint,
+                        months: [0, 0, 0], // Initialize counts for 3 months
+                        total: 0
+                    };
+                }
+                
+                // Find which month of the quarter this complaint belongs to
+                const monthIndex = monthIndices.indexOf(transactionDate.getMonth());
+                if (monthIndex !== -1) {
+                    cases[complaint].months[monthIndex]++;
+                    cases[complaint].total++;
+                }
+            });
+        }
+    });
+
+    // If no data was found, return empty arrays
+    if (Object.keys(cases).length === 0) {
+        return {
+            allData: [['NO DATA AVAILABLE', 0, 0, 0, 0]],
+            top10Data: []
+        };
+    }
+
+    // Convert to array format for table
+    const tableData = Object.values(cases).map(caseData => [
+        caseData.name,
+        ...caseData.months,
+        caseData.total
+    ]);
+
+    // Calculate column totals
+    const totals = [0, 0, 0, 0]; // Initialize totals for 3 months + grand total
+    tableData.forEach(row => {
+        // Skip the first column (complaint name)
+        for (let i = 0; i < 4; i++) {
+            totals[i] += Number(row[i + 1]) || 0;
+        }
+    });
+
+    // Sort by case name (excluding total row)
+    const sortedData = tableData.sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Add total row at the end
+    sortedData.push(['TOTAL', ...totals]);
+
+    // Get top 10 cases by total count (excluding the total row)
+    const top10Cases = sortedData
+        .slice(0, -1) // Exclude total row
+        .sort((a, b) => b[4] - a[4]) // Sort by total count (5th column)
+        .slice(0, 10); // Get top 10
+
+    return {
+        allData: sortedData,
+        top10Data: top10Cases
+    };
+}
+
+<!-- Add these functions after your existing script -->
+let signatories = {
+    preparedBy: {
+        name: 'GODWIN D. SEVILLANO',
+        position: 'Clinic Staff'
+    },
+    notedBy: {
+        name: 'CHARMAINE BALLESTEROS-SEVILLA, RN, MAN',
+        position: 'Nurse II'
+    }
+};
+
+// Load signatories from localStorage if available
+document.addEventListener('DOMContentLoaded', function() {
+    const savedSignatories = localStorage.getItem('reportSignatories');
+    if (savedSignatories) {
+        signatories = JSON.parse(savedSignatories);
+    }
+});
+
+function addSignatures(doc, startY) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    const pageWidth = doc.internal.pageSize.width;
+    const leftMargin = 30;
+    const rightMargin = pageWidth - 30; 
+    const lineSpacing = 5;
+    const sectionSpacing = 25; 
+    
+    // Prepared by (now on the right)
+    doc.text('Prepared by:', rightMargin - 20, startY);
+    doc.setFont('times', 'bold');
+    doc.text(signatories.preparedBy.name, rightMargin, startY + lineSpacing + 10, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(signatories.preparedBy.position, rightMargin, startY + lineSpacing + 15, { align: 'right' });
+
+    // Approved by (now on the left)
+    doc.text('Approved by:', leftMargin, startY + sectionSpacing + 15);
+    doc.setFont('times', 'bold');
+    doc.text(signatories.notedBy.name, leftMargin, startY + sectionSpacing + lineSpacing + 25);
+    doc.setFont('helvetica', 'normal');
+    doc.text(signatories.notedBy.position, leftMargin, startY + sectionSpacing + lineSpacing + 30);
+}
+</script>
+

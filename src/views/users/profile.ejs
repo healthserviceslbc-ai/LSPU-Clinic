@@ -1,0 +1,72 @@
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Manage Account</h1>
+
+        <form action="/users/profile" method="POST" class="space-y-6">
+            <!-- Personal Information Section -->
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-gray-700">Personal Information</h2>
+                
+                <!-- User ID Display -->
+                <div class="mb-4">
+                    <span class="text-sm text-gray-600">User ID: <span class="font-medium text-gray-900"><%= user.formatted_id %></span></span>
+                    <!-- Debug output -->
+                    <% if (typeof user !== 'undefined') { %>
+                        <div class="hidden">Debug: <%= JSON.stringify(user) %></div>
+                    <% } %>
+                </div>
+
+                <div>
+                    <label for="full_name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" 
+                           id="full_name" 
+                           name="full_name" 
+                           value="<%= user.full_name %>"
+                           required
+                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" 
+                           id="username" 
+                           name="username" 
+                           value="<%= user.username %>"
+                           required
+                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- Change Password Section -->
+            <div class="space-y-4 pt-6 border-t">
+                <h2 class="text-lg font-semibold text-gray-700">Change Password</h2>
+                <p class="text-sm text-gray-600">Leave password fields empty if you don't want to change it</p>
+
+                <div>
+                    <label for="current_password" class="block text-sm font-medium text-gray-700">Current Password</label>
+                    <input type="password" 
+                           id="current_password" 
+                           name="current_password"
+                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label for="new_password" class="block text-sm font-medium text-gray-700">New Password</label>
+                    <input type="password" 
+                           id="new_password" 
+                           name="new_password"
+                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end pt-6">
+                <button type="submit" 
+                        class="inline-flex items-center px-4 py-2 bg-blue-500 text-white font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                    <i class="fas fa-save mr-2"></i>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div> 

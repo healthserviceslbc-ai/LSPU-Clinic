@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Database Records</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Top buttons section -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Database Management</h1>
+            <div class="space-x-4">
+                <button 
+                    onclick="exportDatabase()"
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Export Database
+                </button>
+                <label class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded cursor-pointer">
+                    Import Database
+                    <input type="file" id="importFile" accept=".db" class="hidden" onchange="importDatabase(event)">
+                </label>
+                <button 
+                    onclick="removeAllRecords()"
+                    class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Remove All Records
+                </button>
+                <button 
+                    onclick="initializeSeptember()"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Initialize September 2024
+                </button>
+                <button 
+                    onclick="harmonizeRecords()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Generate All Future Records
+                </button>
+                <button 
+                    onclick="extendRecords()"
+                    class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Extend Records +5 Years
+                </button>
+                <button 
+                    onclick="createManualBackup()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Create Manual Backup
+                </button>
+            </div>
+        </div>
+
+        <!-- Database Status Section -->
+        <div id="dbStatus" class="mb-6 p-4 rounded-lg hidden">
+        </div>
+        
+        <!-- Instructions section -->
+        <div class="mb-6">
+            <h2 class="text-xl font-bold mb-2">Database Management Tools:</h2>
+            <div class="space-y-3">
+                <div class="p-2 bg-gray-50 rounded">
+                    <p class="font-semibold text-indigo-600">Export Database</p>
+                    <p class="text-sm text-gray-600">Downloads a backup copy of the current database file to your computer.</p>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <p class="font-semibold text-purple-600">Import Database</p>
+                    <p class="text-sm text-gray-600">Uploads and replaces the current database with a previously exported database file.</p>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <p class="font-semibold text-red-600">Remove All Records</p>
+                    <p class="text-sm text-gray-600">Creates a fresh database with the original schema. All existing data will be removed. Use with caution!</p>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <p class="font-semibold text-blue-600">Initialize September 2024</p>
+                    <p class="text-sm text-gray-600">Sets up the initial month (September 2024) with base inventory data.</p>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <p class="font-semibold text-green-600">Generate All Future Records</p>
+                    <p class="text-sm text-gray-600">Creates inventory records for future months based on current stock levels.</p>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <p class="font-semibold text-pink-600">Extend Records +5 Years</p>
+                    <p class="text-sm text-gray-600">Adds 5 more years of inventory records and removes records older than 5 years.</p>
+                </div>
+            </div>
+            <p class="mt-4 text-sm text-gray-500">Note: Always create a backup before performing any database operations.</p>
+        </div>
+
+        <!-- Automatic Backups Section -->
+        <div class="mb-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Automatic Backups</h2>
+                        <p class="text-sm text-gray-500 mt-1">Backups are stored in: <code class="bg-gray-100 px-2 py-1 rounded">src/data/backups</code></p>
+                        <p class="text-sm text-gray-500">Data retention: <code class="bg-gray-100 px-2 py-1 rounded">5 years</code></p>
+                    </div>
+                    <button 
+                        onclick="createManualBackup()"
+                        class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                    >
+                        Create Manual Backup
+                    </button>
+                </div>
+                <div id="backupStatus" class="text-gray-600 mb-4">
+                    Loading backup status...
+                </div>
+                
+                <!-- Backup History Table -->
+                <div class="mt-6">
+                    <h3 class="text-lg font-semibold mb-3">Backup History</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-4 py-2 text-left">Date</th>
+                                    <th class="px-4 py-2 text-left">Type</th>
+                                    <th class="px-4 py-2 text-left">Size</th>
+                                    <th class="px-4 py-2 text-left">File Name</th>
+                                    <th class="px-4 py-2 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backupHistoryTable">
+                                <!-- Backup history will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-4 text-sm text-gray-500">
+                    <p>• Automatic backups are created monthly in the <code class="bg-gray-100 px-1">src/data/backups</code> directory</p>
+                    <p>• System maintains 5 years of historical data</p>
+                    <p>• Use manual backup for immediate backup needs</p>
+                    <p>• Click 'Revert' to restore the database to a previous state</p>
+                    <p>• Backup files are named as: <code class="bg-gray-100 px-1">inventory_backup_YYYY_MM.db</code></p>
+                    <p>• Older backups are automatically removed to maintain 5-year retention policy</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Records Table -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Monthly Records</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Record Count</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTable" class="bg-white divide-y divide-gray-200">
+                        <!-- Records will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load records on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRecords();
+            loadBackupStatus();
+        });
+
+        // Helper function to show alerts
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `fixed top-4 right-4 p-4 rounded shadow-lg ${
+                type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`;
+            alertDiv.textContent = message;
+            document.body.appendChild(alertDiv);
+            
+            // Remove the alert after 3 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+
+        function loadRecords() {
+            fetch('/reports/check-db/records')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('recordsTable');
+                    const statusDiv = document.getElementById('dbStatus');
+
+                    if (data.error) {
+                        // Show error message
+                        statusDiv.classList.remove('hidden', 'bg-green-100');
+                        statusDiv.classList.add('bg-red-100', 'text-red-700');
+                        statusDiv.innerHTML = `
+                            <p class="font-bold">Database Error</p>
+                            <p>${data.error}</p>
+                            <p class="mt-2">Please follow the steps above to fix the database.</p>
+                        `;
+                        tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No records available</td></tr>';
+                        return;
+                    }
+
+                    if (data.records.length === 0) {
+                        statusDiv.classList.remove('hidden', 'bg-red-100');
+                        statusDiv.classList.add('bg-yellow-100', 'text-yellow-700');
+                        statusDiv.innerHTML = '<p>No records found. Please initialize the database using the buttons above.</p>';
+                        tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No records available</td></tr>';
+                        return;
+                    }
+
+                    // Hide status div if everything is ok
+                    statusDiv.classList.add('hidden');
+
+                    // Populate table
+                    tableBody.innerHTML = data.records.map(record => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${record.year}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${record.month}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                ${record.count} medicines
+                                <span class="text-gray-500">(${record.percentage}% of total)</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <button 
+                                    onclick="removeRecord('${record.year}', '${record.month}')"
+                                    class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-sm"
+                                >
+                                    Remove Record
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(error => {
+                    const statusDiv = document.getElementById('dbStatus');
+                    statusDiv.classList.remove('hidden', 'bg-green-100');
+                    statusDiv.classList.add('bg-red-100', 'text-red-700');
+                    statusDiv.innerHTML = `
+                        <p class="font-bold">Error Loading Records</p>
+                        <p>${error.message}</p>
+                        <p class="mt-2">Please follow the steps above to fix the database.</p>
+                    `;
+                });
+        }
+
+        // Add error handling for authentication
+        function handleResponse(response) {
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = '/auth/login';
+                    throw new Error('Please log in first');
+                }
+                return response.json().then(data => {
+                    throw new Error(data.error || `Server error: ${response.status}`);
+                });
+            }
+            return response.json();
+        }
+
+        function removeRecord(year, month) {
+            if (confirm(`Are you sure you want to remove all records for ${month} ${year}?`)) {
+                fetch('/reports/remove-record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ year, month })
+                })
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        throw new Error('Please log in first');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('Records removed successfully');
+                        location.reload();
+                    } else {
+                        alert('Error removing records: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message !== 'Please log in first') {
+                        alert('Error removing records');
+                    }
+                });
+            }
+        }
+
+        function initializeSeptember() {
+            if (confirm('Are you sure you want to initialize September 2024 data? This will set the initial stock values.')) {
+                fetch('/reports/initialize-september', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        throw new Error('Please log in first');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('September 2024 data initialized successfully');
+                        location.reload();
+                    } else {
+                        alert('Error initializing data: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message !== 'Please log in first') {
+                        alert('Error initializing September 2024 data');
+                    }
+                });
+            }
+        }
+
+        function createOctober() {
+            if (confirm('Are you sure you want to create October 2024 records based on September 2024 data?')) {
+                fetch('/reports/create-october', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        throw new Error('Please log in first');
+                    }
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to create October records');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert(`October 2024 records created successfully! Created ${data.recordsCreated} records.`);
+                        location.reload();
+                    } else {
+                        alert('Error creating records: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message !== 'Please log in first') {
+                        alert(error.message || 'Error creating October records');
+                    }
+                });
+            }
+        }
+
+        // Add this function to handle future records generation
+        function generateFutureRecords() {
+            if (confirm('Are you sure you want to generate monthly records from September 2024 to December 2034? This will create records for all medicines.')) {
+                fetch('/api/reports/generate-future-records', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            window.location.href = '/auth/login';
+                            throw new Error('Please log in first');
+                        }
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to generate records');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert(`Successfully generated future records! Created ${data.recordsCreated} records.`);
+                        location.reload();
+                    } else {
+                        throw new Error(data.error || 'Failed to generate records');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message !== 'Please log in first') {
+                        alert(error.message || 'Error generating future records');
+                    }
+                });
+            }
+        }
+
+        // Add function to verify future records
+        function verifyFutureRecords() {
+            fetch('/api/reports/verify-future-records', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        throw new Error('Please log in first');
+                    }
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to verify records');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const message = `
+                        Future Records Verification:
+                        - Total months: ${data.totalMonths}
+                        - Average completion: ${data.averageCompletion.toFixed(2)}%
+                        
+                        Details:
+                        ${data.records.map(r => `${r.year}-${r.month}: ${r.record_count}/${r.total_medicines} medicines (${r.completion_percentage}%)`).join('\n')}
+                    `;
+                    alert(message);
+                } else {
+                    throw new Error(data.error || 'Failed to verify records');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (error.message !== 'Please log in first') {
+                    alert(error.message || 'Error verifying future records');
+                }
+            });
+        }
+
+        // Add function to clean up records
+        function cleanupRecords() {
+            if (confirm('Are you sure you want to clean up the monthly records? This will remove duplicates and ensure each month has exactly 87 medicines.')) {
+                fetch('/api/reports/cleanup-records', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            window.location.href = '/auth/login';
+                            throw new Error('Please log in first');
+                        }
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to clean up records');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        alert('Successfully cleaned up monthly records!');
+                        location.reload();
+                    } else {
+                        throw new Error(data.error || 'Failed to clean up records');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message !== 'Please log in first') {
+                        alert(error.message || 'Error cleaning up records');
+                    }
+                });
+            }
+        }
+
+        // Add function to update stock continuity
+        function updateStockContinuity() {
+            if (!confirm('Are you sure you want to update stock continuity?')) return;
+
+            fetch('/reports/update-stock-continuity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        throw new Error('Please log in first');
+                    }
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to update stock continuity');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert(`Successfully updated stock continuity! Updated ${data.recordsUpdated} records.`);
+                    loadRecords();
+                } else {
+                    throw new Error(data.error || 'Failed to update stock continuity');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating stock continuity: ' + error.message);
+            });
+        }
+
+        // Initialize September 2024
+        function initializeSeptember() {
+            if (!confirm('Are you sure you want to initialize September 2024 data? This will set up the base month.')) return;
+
+            fetch('/reports/initialize-september', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    alert('September 2024 initialized successfully');
+                    loadRecords();
+                } else {
+                    throw new Error(data.error || 'Failed to initialize September 2024');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error initializing September 2024: ' + error.message);
+            });
+        }
+
+        // Remove all records and fix corrupted database
+        function removeAllRecords() {
+            if (!confirm('WARNING: This will remove the current database and create a new one with the original schema. Continue?')) return;
+
+            const statusDiv = document.getElementById('dbStatus');
+            statusDiv.classList.remove('hidden');
+            statusDiv.classList.add('bg-yellow-100', 'text-yellow-700', 'p-4', 'rounded');
+            statusDiv.innerHTML = `
+                <p class="font-bold animate-pulse">Recreating database...</p>
+                <p class="mt-2">Please wait while we create a fresh database...</p>
+            `;
+
+            fetch('/reports/recreate-database', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    createAdmin: true,  // Flag to create admin user
+                    adminUsername: 'admin',
+                    adminPassword: 'admin123'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/auth/login';
+                        throw new Error('Please log in first');
+                    }
+                    return response.text().then(text => {
+                        try {
+                            const data = JSON.parse(text);
+                            throw new Error(data.error || `Server error: ${response.status}`);
+                        } catch (e) {
+                            throw new Error(`Server error: ${response.status}`);
+                        }
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    statusDiv.classList.remove('bg-yellow-100', 'text-yellow-700');
+                    statusDiv.classList.add('bg-green-100', 'text-green-700');
+                    
+                    const message = 'Database has been recreated successfully with the original schema.\n\n' +
+                                  'The system will now log you out.\n' +
+                                  'Please follow these steps:\n' +
+                                  '1. Run "npm start" in your terminal\n' +
+                                  '2. Log back in using:\n' +
+                                  '   Username: admin\n' +
+                                  '   Password: admin123';
+                    
+                    statusDiv.innerHTML = `
+                        <p class="font-bold">Database Recreated Successfully</p>
+                        <p class="mt-2">System will restart...</p>
+                        <div class="mt-4 text-sm bg-blue-50 p-3 rounded">
+                            <p class="font-semibold">Next Steps:</p>
+                            <ol class="list-decimal list-inside mt-1">
+                                <li>Run <code class="bg-blue-100 px-2 py-1 rounded">npm start</code> in your terminal</li>
+                                <li>Log back in using:
+                                    <ul class="ml-6 mt-1">
+                                        <li>Username: <code class="bg-blue-100 px-2 py-1 rounded">admin</code></li>
+                                        <li>Password: <code class="bg-blue-100 px-2 py-1 rounded">admin123</code></li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    `;
+                    
+                    alert(message);
+                    
+                    setTimeout(() => {
+                        window.location.href = '/auth/logout';
+                    }, 1000);
+                } else {
+                    throw new Error(data.error || 'Failed to recreate database');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusDiv.classList.remove('bg-yellow-100', 'text-yellow-700');
+                statusDiv.classList.add('bg-red-100', 'text-red-700');
+                statusDiv.innerHTML = `
+                    <p class="font-bold">Error</p>
+                    <p class="mt-2">Failed to recreate database: ${error.message}</p>
+                    <p class="mt-2">Please contact system administrator.</p>
+                `;
+            });
+        }
+
+        // Generate future records
+        function harmonizeRecords() {
+            if (!confirm('This will generate all future records with proper stock continuity. Continue?')) return;
+
+            fetch('/reports/generate-future-records', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    alert('Future records generated successfully');
+                    loadRecords();
+                } else {
+                    throw new Error(data.error || 'Failed to generate records');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating records: ' + error.message);
+            });
+        }
+
+        // Verify records
+        function verifyFutureRecords() {
+            fetch('/reports/verify-future-records', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    const message = `
+                        Verification Results:
+                        Total Months: ${data.totalMonths}
+                        Average Completion: ${data.averageCompletion.toFixed(2)}%
+
+                        Monthly Breakdown:
+                        ${data.records.map(r => 
+                            `${r.year}-${r.month}: ${r.record_count} medicines (${r.completion_percentage}%)`
+                        ).join('\n')}
+                    `;
+                    alert(message);
+                } else {
+                    throw new Error(data.error || 'Verification failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error verifying records: ' + error.message);
+            });
+        }
+
+        // Remove specific record
+        function removeRecord(year, month) {
+            if (!confirm(`Are you sure you want to remove records for ${month}/${year}?`)) return;
+
+            fetch('/reports/remove-record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ year, month })
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    alert('Record removed successfully');
+                    loadRecords();
+                } else {
+                    throw new Error(data.error || 'Failed to remove record');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error removing record: ' + error.message);
+            });
+        }
+
+        // Export database
+        function exportDatabase() {
+            fetch('/reports/export-db', {
+                method: 'GET',
+                headers: { 'Accept': 'application/octet-stream' }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Export failed');
+                return response.blob();
+            })
+            .then(blob => {
+                const date = new Date().toISOString().split('T')[0];
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `inventory_backup_${date}.db`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error exporting database: ' + error.message);
+            });
+        }
+
+        // Import database
+        function importDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!confirm('Are you sure you want to import this database? This will replace your current database.')) {
+                event.target.value = ''; // Clear the file input
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('database', file);
+
+            fetch('/reports/import-db', {
+                method: 'POST',
+                body: formData
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    alert('Database imported successfully');
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Import failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error importing database: ' + error.message);
+            })
+            .finally(() => {
+                event.target.value = ''; // Clear the file input
+            });
+        }
+
+        // Create manual backup
+        async function createManualBackup() {
+            try {
+                const now = new Date();
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = months[now.getMonth()];
+                const day = now.getDate().toString().padStart(2, '0');
+                const year = now.getFullYear();
+                const fileName = `Manualbackup_${month}_${day}_${year}.db`;
+                
+                const response = await fetch('/reports/create-backup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        fileName,
+                        type: 'Manual'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('success', 'Manual backup created successfully');
+                    loadBackupStatus(); // Refresh the backup list
+                } else {
+                    showAlert('error', 'Failed to create backup: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error creating manual backup:', error);
+                showAlert('error', 'Failed to create backup: ' + error.message);
+            }
+        }
+
+        // Load backup status
+        function loadBackupStatus() {
+            fetch('/reports/backup-status')
+            .then(handleResponse)
+            .then(data => {
+                const statusDiv = document.getElementById('backupStatus');
+                const historyTable = document.getElementById('backupHistoryTable');
+                
+                if (data.backupHistory && data.backupHistory.length > 0) {
+                    // Sort backups by date in descending order
+                    const sortedBackups = data.backupHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    statusDiv.innerHTML = `
+                        <p>Total Backups: ${data.backupHistory.length}</p>
+                        <p class="text-sm text-gray-500 mt-2">Backup Location: <code class="bg-gray-100 px-2 py-1 rounded">src/data/backups</code></p>
+                    `;
+
+                    historyTable.innerHTML = sortedBackups.map(backup => {
+                        const backupDate = new Date(backup.date);
+                        return `
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="px-4 py-2">${backupDate.toLocaleString()}</td>
+                                <td class="px-4 py-2">${backup.type}</td>
+                                <td class="px-4 py-2">${formatFileSize(backup.size)}</td>
+                                <td class="px-4 py-2">
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-sm">${backup.fileName}</code>
+                                </td>
+                                <td class="px-4 py-2">
+                                    <button 
+                                        onclick="revertToBackup('${backup.fileName}', '${backupDate.toLocaleString()}')"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
+                                    >
+                                        Revert
+                                    </button>
+                                    <button 
+                                        onclick="downloadBackup('${backup.fileName}', '${backupDate.toLocaleString()}')"
+                                        class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm ml-2"
+                                    >
+                                        Download
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    statusDiv.innerHTML = 'No backups found. Create your first backup using the button above.';
+                    historyTable.innerHTML = `
+                        <tr class="border-t">
+                            <td colspan="5" class="px-4 py-2 text-center text-gray-500">No backup history available</td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const statusDiv = document.getElementById('backupStatus');
+                statusDiv.innerHTML = 'Error loading backup status';
+            });
+        }
+
+        // Helper function to format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Function to revert to a specific backup
+        function revertToBackup(backupId, monthYear) {
+            if (!confirm(`Are you sure you want to revert to the backup from ${monthYear}? Current data will be replaced.`)) return;
+
+            fetch('/reports/revert-backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    backupId,
+                    backupPath: 'src/data/backups' // Updated backup directory
+                })
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    alert(`Successfully reverted to ${monthYear} backup`);
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Failed to revert to backup');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error reverting to backup: ' + error.message);
+            });
+        }
+
+        // Function to download a specific backup
+        function downloadBackup(backupId, monthYear) {
+            fetch(`/reports/download-backup/${encodeURIComponent(backupId)}?path=src/data/backups`)
+            .then(response => {
+                if (!response.ok) throw new Error('Download failed');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = backupId;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                alert(`Backup from ${monthYear} downloaded successfully`);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error downloading backup: ' + error.message);
+            });
+        }
+
+        // Function to extend records by 5 years
+        function extendRecords() {
+            if (!confirm('This will generate records for the next 5 years and remove old records. Continue?')) return;
+
+            fetch('/reports/extend-records', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ years: 5 }) // Specify 5 years
+            })
+            .then(handleResponse)
+            .then(data => {
+                if (data.success) {
+                    alert(`Successfully extended records!\nAdded: ${data.addedRecords} new records\nRemoved: ${data.removedRecords} old records`);
+                    loadRecords();
+                } else {
+                    throw new Error(data.error || 'Failed to extend records');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (error.message === 'Failed to fetch') {
+                    alert('Network error. Please check your connection and try again.');
+                } else {
+                    alert('Error extending records: ' + error.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

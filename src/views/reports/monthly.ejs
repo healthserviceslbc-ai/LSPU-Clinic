@@ -1,0 +1,2885 @@
+<!-- Load custom fonts -->
+<script src="/js/canterbury-font.js"></script>
+<script>
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 1024; // Process in smaller chunks
+    
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.slice(i, i + chunkSize);
+        chunk.forEach(byte => binary += String.fromCharCode(byte));
+    }
+    
+    return window.btoa(binary);
+}
+
+const fontStatus = {
+    isLoading: false,
+    isLoaded: false,
+    error: null
+};
+
+// Font cache
+const fontCache = {
+    canterbury: null
+};
+
+// Font loader
+async function loadCustomFonts(maxRetries = 2, retryDelay = 1000) {
+    if (fontStatus.isLoading) {
+        return;
+    }
+
+    if (fontStatus.isLoaded) {
+        return;
+    }
+
+    fontStatus.isLoading = true;
+    fontStatus.error = null;
+
+    const fonts = [
+        { name: 'canterbury', url: '/fonts/Canterbury.ttf' }
+    ];
+
+    try {
+        await Promise.all(fonts.map(async font => {
+            if (fontCache[font.name]) {
+                window[font.name + 'Font'] = fontCache[font.name];
+                return;
+            }
+
+            let attempts = 0;
+            while (attempts < maxRetries) {
+                try {
+                    const response = await fetch(font.url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const buffer = await response.arrayBuffer();
+                    if (buffer.byteLength > 5000000) { // 5MB limit
+                        throw new Error(`${font.name} font file too large`);
+                    }
+
+                    const base64Font = arrayBufferToBase64(buffer);
+                    
+                    try {
+                        const testDoc = new window.jspdf.jsPDF();
+                        testDoc.addFileToVFS('Canterbury.ttf', base64Font);
+                        testDoc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+                        testDoc.setFont('Canterbury', 'normal');
+                        const testWidth = testDoc.getTextWidth('Test');
+                        
+                        if (testWidth === 0) {
+                            throw new Error('Font validation failed');
+                        }
+                    } catch (testError) {
+                        throw new Error('Font validation failed');
+                    }
+
+                    fontCache[font.name] = base64Font;
+                    window[font.name + 'Font'] = base64Font;
+                    break;
+                } catch (err) {
+                    attempts++;
+                    if (attempts === maxRetries) {
+                        fontCache[font.name] = null;
+                        window[font.name + 'Font'] = null;
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    }
+                }
+            }
+        }));
+        
+        fontStatus.isLoaded = true;
+    } catch (error) {
+        fontStatus.error = error;
+    } finally {
+        fontStatus.isLoading = false;
+    }
+}
+
+async function waitForFonts(timeout = 10000) {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeout) {
+        if (fontStatus.isLoaded) return true;
+        if (fontStatus.error) throw fontStatus.error;
+        if (!fontStatus.isLoading) break;
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    throw new Error('Font loading timeout');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadCustomFonts().catch(error => {
+        showNotification('Some fonts failed to load. System fonts will be used.', 'warning');
+    });
+});
+
+async function generatePdfPreview(isDownload = false) {
+    try {
+        const startTime = performance.now();
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4',
+            compress: true,
+            putOnlyUsedFonts: true,
+            precision: 2,
+            floatPrecision: 2
+        });
+
+        try {
+            if (window.canterburyFontData) {
+                doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+                doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+            }
+        } catch (error) {
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Republic of the Philippines', pageWidth / 2, 15, { align: 'center' });
+        
+        doc.setFontSize(16);
+        doc.setFont('Canterbury', 'normal');
+        doc.text('Laguna State Polytechnic University', pageWidth / 2, 26, { align: 'center' });
+
+        // Page setup
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+        const margins = { top: 15, right: 10, bottom: 15, left: 10 };
+        const tableStartY = 55;
+
+        // Logos
+        doc.addImage('/images/lspu-logo.png', 'PNG', 85, 5, 20, 20);
+        doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 105, 5, 20.8, 20);
+
+        // Title
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INVENTORY OF MEDICINES', pageWidth / 2, 45, { align: 'center' });
+
+        // Month and year getter
+        const { month, year } = getCurrentSelection();
+        const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+
+        doc.setFontSize(12);
+        doc.text(`MONTH OF ${monthName.toUpperCase()}`, pageWidth / 2, 52, { align: 'center' });
+
+        doc.autoTable({
+            startY: tableStartY,
+            head: tableData.head,
+            body: tableData.body,
+            theme: 'grid',
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 1,
+                halign: 'center',
+                valign: 'middle',
+                lineWidth: 0.1,
+                lineColor: [80, 80, 80]
+            },
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [50, 50, 50],
+                fontSize: 8,
+                font: 'helvetica',
+                fontStyle: 'bold'
+            },
+        });
+
+        // Add signatories
+        const finalY = doc.lastAutoTable.finalY + 30;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        
+        // Prepared by
+        doc.text('Prepared by:', 25, finalY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(signatories.preparedBy.name, 25, finalY + 10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.preparedBy.position, 25, finalY + 15);
+
+        // Noted by
+        const notedByY = finalY + 35;
+        doc.text('Noted by:', pageWidth - 85, notedByY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(signatories.notedBy.name, pageWidth - 85, notedByY + 10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.notedBy.position, pageWidth - 85, notedByY + 15);
+
+        // Create blob
+        const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        if (isDownload) {
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `Medicine_Inventory_${monthName}_${year}.pdf`;
+            link.click();
+            showNotification('Report downloaded successfully', 'success');
+        } else {
+            window.open(blobUrl, '_blank');
+            showNotification('Report opened in new tab', 'success');
+        }
+
+        // Clean up
+        setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+function getColumnStyles() {
+    return {
+        0: { cellWidth: 12 }, // UNITS
+        1: { cellWidth: 30 }, // MEDICINES
+        2: { cellWidth: 15 }, // EXPIRY DATE
+        3: { cellWidth: 12 }, // REPLENISHED
+        4: { cellWidth: 12 }  // STARTING STOCKS
+    };
+}
+
+async function addHeadersAndLogos(doc, pageWidth, month, year) {
+    // Add logos
+    await Promise.all([
+        doc.addImage('/images/lspu-logo.png', 'PNG', 85, 5, 20, 20),
+        doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 105, 5, 20.8, 20)
+    ]);
+
+    // Add header text
+    const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+    
+    doc.setFontSize(12);
+    doc.setFont(doc.getFont().fontName, 'normal');
+    doc.text('Republic of the Philippines', pageWidth / 2, 15, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Laguna State Polytechnic University', pageWidth / 2, 21, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Province of Laguna', pageWidth / 2, 27, { align: 'center' });
+    
+    // Add title
+    doc.setFontSize(16);
+    doc.text(`Medicine Inventory Sheet - ${monthName} ${year}`, pageWidth / 2, 45, { align: 'center' });
+}
+
+function processTableChunk(rows, currentCategory) {
+    const tableData = {
+        head: [],
+        body: []
+    };
+
+    rows.forEach(row => {
+        if (row.hasAttribute('data-category-header')) {
+            currentCategory = row.querySelector('td')?.textContent?.trim() || currentCategory;
+            return;
+        }
+
+        const cells = Array.from(row.cells).map(cell => ({
+            content: cell.textContent.trim(),
+            styles: {
+                fillColor: getCategoryColor(currentCategory)
+            }
+        }));
+
+        if (row.parentElement.tagName === 'THEAD') {
+            tableData.head.push(cells);
+        } else {
+            tableData.body.push(cells);
+        }
+    });
+
+    return { tableData, newCategory: currentCategory };
+}
+
+function handlePageDrawn(data, doc, pageHeight, margins) {
+    if (data.pageCount > 1) {
+        doc.setFontSize(8);
+        doc.text(`Page ${data.pageCount}`, doc.internal.pageSize.width - 20, pageHeight - margins.bottom);
+    }
+}
+
+function downloadPdf(pdfBlob, month, year) {
+    const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(pdfBlob);
+    link.download = `Medicine_Inventory_${monthName}_${year}.pdf`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    showNotification('Report downloaded successfully', 'success');
+}
+
+function previewPdf(pdfBlob) {
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    showNotification('Report opened in new tab', 'success');
+}
+
+function handlePdfError(error, month, year) {
+    showNotification('Error generating PDF. Trying server-side generation...', 'warning');
+    window.open(`/reports/generate-pdf?month=${month}&year=${year}`, '_blank');
+}
+
+// Helper function to process table chunks
+function processTableChunk(rows) {
+    const tableData = {
+        head: [],
+        body: []
+    };
+
+    rows.forEach((row, index) => {
+        const cells = Array.from(row.cells).map(cell => cell.textContent.trim());
+        if (row.parentElement.tagName === 'THEAD') {
+            tableData.head.push(cells);
+        } else {
+            tableData.body.push(cells);
+        }
+    });
+
+    return tableData;
+}
+
+// Helper function to get current month/year selection
+function getCurrentSelection() {
+    const monthSelect = document.querySelector('select[name="month"]');
+    const yearSelect = document.querySelector('select[name="year"]');
+    return {
+        month: monthSelect.value,
+        year: yearSelect.value
+    };
+}
+
+async function generateMonthlyReport(isDownload = true) {
+    try {
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true,
+            putOnlyUsedFonts: true,
+            floatPrecision: 2
+        });
+
+        try {
+            if (window.canterburyFontData) {
+                
+                // Add font to VFS and register it
+                doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+                doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+                
+                // Verify font registration
+                const fonts = doc.getFontList();
+
+                if (!fonts['Canterbury']) {
+                    throw new Error('Font registration failed');
+                }
+            } else {
+                throw new Error('Canterbury font data not found');
+            }
+        } catch (error) {
+        }
+
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+
+        // Margins to center the table
+        const tableWidth = 145; // Total width of columns (110 + 35)
+        const availableWidth = pageWidth;
+        const leftMargin = (availableWidth - tableWidth) / 2;
+
+        // Month and year getter
+        const monthSelect = document.querySelector('select[name="month"]');
+        const yearSelect = document.querySelector('select[name="year"]');
+        const monthName = monthSelect.options[monthSelect.selectedIndex].text;
+        const year = yearSelect.value;
+
+        const table = document.getElementById('inventoryTable');
+        if (!table) {
+            throw new Error('Table not found');
+        }
+
+        const tableData = {
+            head: [['NAME OF MEDICINES', 'REMAINING BALANCE']],
+            body: []
+        };
+
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(row => {
+            if (!row.hasAttribute('data-category-header')) {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2) {
+                    const medicineName = cells[1].textContent.trim();
+                    const balance = cells[cells.length - 2].textContent.trim();
+                    if (medicineName && balance) {
+                        tableData.body.push([medicineName, balance]);
+                    }
+                }
+            }
+        });
+
+        doc.autoTable({
+            startY: 70,
+            head: tableData.head,
+            body: tableData.body,
+            theme: 'grid',
+            styles: {
+                font: 'helvetica',
+                fontSize: 10,
+                cellPadding: 3,
+                halign: 'left',
+                valign: 'middle',
+                lineWidth: 0.1,
+                lineColor: [80, 80, 80]
+            },
+            headStyles: {
+                fillColor: [255, 255, 255],
+                textColor: [0, 0, 0],
+                fontSize: 10,
+                font: 'helvetica',
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { cellWidth: 110 },
+                1: { cellWidth: 35, halign: 'center' }
+            },
+            margin: { 
+                top: 70,
+                left: leftMargin,
+                right: leftMargin,
+                bottom: 40
+            },
+            didDrawPage: function(data) {
+                // Logos
+                doc.addImage('/images/lspu-logo.png', 'PNG', 30, 10, 25, 25);
+                doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 55, 10, 26, 25);
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Republic of the Philippines', pageWidth / 2, 20, { align: 'center' });
+
+                doc.setFontSize(16);
+                try {
+                    const fonts = doc.getFontList();
+                    if (fonts['Canterbury']) {
+                        doc.setFont('Canterbury', 'normal');
+                    } else {
+                        doc.setFont('helvetica', 'bold');
+                    }
+                    doc.setTextColor(0);
+                    const universityName = 'Laguna State Polytechnic University';
+                    doc.text(universityName, pageWidth / 2, 26, { align: 'center' });
+                } catch (error) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Laguna State Polytechnic University', pageWidth / 2, 26, { align: 'center' });
+                }
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Province of Laguna', pageWidth / 2, 32, { align: 'center' });
+
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('INVENTORY OF MEDICINES', pageWidth / 2, 45, { align: 'center' });
+                doc.text(year.toString(), pageWidth / 2, 52, { align: 'center' });
+
+                doc.setFontSize(12);
+                doc.text(`MONTH OF ${monthName.toUpperCase()}`, pageWidth / 2, 62, { align: 'center' });
+
+                const footerY = pageHeight - 5;
+                doc.setFontSize(8);
+
+                doc.setFont('helvetica', 'normal');
+                doc.text('The report has been automatically generated by the system based on the recorded data.', 15, footerY - 10);
+
+                doc.setFont('helvetica', 'normal');
+                doc.text('LSPU-OSAS-SF-M10', 15, footerY - 3);
+                doc.text('Rev. 0', pageWidth / 2, footerY - 3, { align: 'center' });
+                doc.text('10 Aug. 2016', pageWidth - 15, footerY - 3, { align: 'right' });
+            }
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 30;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10.5);
+        
+        const rightEdge = pageWidth - (rightMargin + 50);
+        
+        // Prepared by 
+        doc.text('Prepared by:', rightEdge, finalY, { align: 'left' });
+        doc.setFont('times', 'bold');
+        doc.text(signatories.preparedBy.name, rightEdge, finalY + 10, { align: 'left' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.preparedBy.position, rightEdge, finalY + 15, { align: 'left' });
+
+        // Noted by 
+        const notedByY = finalY + 35;
+        doc.text('Noted by:', 25, notedByY, { align: 'left' });
+        doc.setFont('times', 'bold');
+        doc.text(signatories.notedBy.name, 25, notedByY + 10, { align: 'left' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.notedBy.position, 25, notedByY + 15, { align: 'left' });
+
+        // Blob for preview
+        const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        if (isDownload) {
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `Medicine_Inventory_${monthName}_${year}.pdf`;
+            link.click();
+            showNotification('Report downloaded successfully', 'success');
+        } else {
+            window.open(blobUrl, '_blank');
+            showNotification('Report opened in new tab', 'success');
+        }
+
+        // Clean up
+        setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// ... existing code ...
+
+async function loadFont(url) {
+    try {
+        // First try to use the pre-loaded font data
+        if (window.canterburyFontData) {
+            return window.canterburyFontData;
+        }
+
+        // If not available, fetch it
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const base64Data = arrayBufferToBase64(arrayBuffer);
+        
+        // Cache the result
+        window.canterburyFontData = base64Data;
+        return base64Data;
+    } catch (error) {
+        console.error('Error loading font:', url, error);
+        throw error;
+    }
+}
+
+// Initialize fonts when DOM is loaded
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Only load if not already loaded
+        if (!window.canterburyFontData) {
+            window.canterburyFontData = await loadFont('/fonts/Canterbury.ttf');
+        }
+    } catch (error) {
+        console.error('Error loading fonts:', error);
+        showNotification('Some fonts failed to load. System fonts will be used.', 'warning');
+    }
+});
+</script>
+
+<div id="notification" class="fixed top-4 right-4 px-4 py-2 text-white rounded shadow-lg transform transition-transform duration-300 translate-x-full z-50"></div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.1/jspdf.plugin.autotable.min.js"></script>
+
+<div class="bg-white rounded-lg shadow-md px-4 py-4 max-w-full">
+    <!-- Controls - Only visible on screen -->
+    <div class="no-print">
+        <div class="flex flex-col space-y-4 mb-6">
+            <!-- Title -->
+            <div class="flex justify-center items-center">
+                <h1 class="text-2xl font-bold text-gray-800">Medicine Inventory Sheet</h1>
+            </div>
+
+            <!-- Controls Container -->
+            <div class="flex items-center space-x-4 mr-4">
+                <!-- Left Section: Search and Add Medicine -->
+                <div class="flex items-center space-x-4 flex-1">
+                    <!-- Search -->
+                    <div class="relative w-64">
+                        <input type="text" 
+                               id="searchInput" 
+                               placeholder="Search medicines..." 
+                               class="w-full pl-10 pr-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                               oninput="filterTable(this.value)">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </span>
+                    </div>
+
+                    <!-- Add Medicine Button -->
+                    <button onclick="openAddModal()" 
+                            class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Medicine
+                    </button>
+                </div>
+
+                <!-- Right Section: Month/Year Selection and Action Buttons -->
+                <div class="flex items-center space-x-4">
+                    <!-- Month/Year Selection -->
+                    <form action="/reports/monthly" method="GET" class="flex items-center space-x-2" id="reportForm">
+                        <% 
+                        const currentDate = new Date();
+                        const currentYear = currentDate.getFullYear();
+                        const currentMonth = currentDate.getMonth() + 1;
+                        %>
+                        <select name="month" 
+                                class="text-sm border border-gray-300 rounded-md py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-1 focus:ring-blue-500"
+                                onchange="this.form.submit()">
+                            <% const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']; %>
+                            <% months.forEach((m, i) => { 
+                                const monthNum = i + 1;
+                                const isDisabled = parseInt(year) === currentYear && monthNum > currentMonth;
+                            %>
+                                <option value="<%= monthNum.toString().padStart(2, '0') %>" 
+                                        <%= month === monthNum.toString().padStart(2, '0') ? 'selected' : '' %>
+                                        <%= isDisabled ? 'disabled' : '' %>>
+                                    <%= m %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <select name="year" 
+                                class="text-sm border border-gray-300 rounded-md py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onchange="this.form.submit()">
+                            <% for(let y = 2024; y <= 2034; y++) { %>
+                                <option value="<%= y %>" 
+                                        <%= year === y.toString() ? 'selected' : '' %>
+                                        <%= y > currentYear ? 'disabled' : '' %>>
+                                    <%= y %>
+                                </option>
+                            <% } %>
+                        </select>
+                    </form>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center space-x-4">
+                        <!-- Generate Report -->
+                        <div class="relative">
+                            <button onclick="toggleReportDropdown()" 
+                                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200">
+                                <i class="fas fa-file-alt mr-2"></i>
+                                Generate Report
+                                <i class="fas fa-chevron-down ml-2"></i>
+                            </button>
+                            <div id="reportDropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <div class="py-1">
+                                    <button onclick="generateMonthlyReport(false)" 
+                                            class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        Preview PDF
+                                    </button>
+                                    <button onclick="generateMonthlyReport(true)" 
+                                            class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                        <i class="fas fa-download mr-2"></i>
+                                        Download PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Export Sheet -->
+                        <div class="relative">
+                            <button onclick="toggleDetailedReportDropdown()" 
+                                    class="inline-flex items-center text-sm hover:text-gray-900 focus:outline-none transition-colors duration-200"
+                                    title="Export Sheet">
+                                <i class="fas fa-file-export text-lg mr-1"></i>
+                                <span>Export Sheet</span>
+                                <i class="fas fa-chevron-down ml-2"></i>
+                            </button>
+                            <div id="detailedReportDropdown" class="hidden absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <div class="py-1">
+                                    <button onclick="generatePdfPreview(false)" 
+                                            class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        Preview PDF
+                                    </button>
+                                    <button onclick="generatePdfPreview(true)" 
+                                            class="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left">
+                                        <i class="fas fa-download mr-2"></i>
+                                        Download PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Manage Signatories -->
+                        <div class="relative">
+                            <button onclick="openSignatoriesModal()" 
+                                    class="inline-flex items-center text-sm hover:text-gray-900 focus:outline-none transition-colors duration-200"
+                                    title="Manage Signatories">
+                                <i class="fas fa-signature text-lg mr-1"></i>
+                                <span>Manage Signatories</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Medicine Modal -->
+        <div id="addMedicineModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full modal-overlay">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">Add New Medicine</h3>
+                    <form id="addMedicineForm" class="mt-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Name</label>
+                            <input type="text" name="name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="unit">Unit</label>
+                            <input type="text" name="unit" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="category">Category</label>
+                            <select name="category" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="MEDICINES">MEDICINES</option>
+                                <option value="MEDICAL SUPPLIES">MEDICAL SUPPLIES</option>
+                                <option value="DENTAL SUPPLIES">DENTAL SUPPLIES</option>
+                                <option value="OTHER SUPPLIES">OTHER SUPPLIES</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="expiry_date">Expiry Date</label>
+                            <input type="date" 
+                                   name="expiry_date" 
+                                   required 
+                                   pattern="\d{4}-\d{2}-\d{2}"
+                                   placeholder="YYYY-MM-DD"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="beginning_stock">Stocks</label>
+                            <input type="number" 
+                                   name="beginning_stock" 
+                                   required 
+                                   min="0"
+                                   placeholder="Enter initial stock quantity"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="flex justify-end mt-6">
+                            <button type="button" onclick="closeAddModal()" 
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mr-2">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Medicine Modal -->
+        <div id="editMedicineModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full modal-overlay">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">Edit <span id="editMedicineNameTitle" class="font-bold"></span></h3>
+                    <form id="editMedicineForm" class="mt-4">
+                        <input type="hidden" id="editMedicineId" name="id">
+                        <input type="hidden" id="editMedicineYear" name="year" value="<%= year %>">
+                        <input type="hidden" id="editMedicineMonth" name="month" value="<%= month %>">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="editMedicineName">Name</label>
+                            <input type="text" id="editMedicineName" name="name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="editMedicineUnit">Unit</label>
+                            <input type="text" id="editMedicineUnit" name="unit" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="editMedicineCategory">Category</label>
+                            <select id="editMedicineCategory" name="category" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="MEDICINES">MEDICINES</option>
+                                <option value="MEDICAL SUPPLIES">MEDICAL SUPPLIES</option>
+                                <option value="DENTAL SUPPLIES">DENTAL SUPPLIES</option>
+                                <option value="OTHER SUPPLIES">OTHER SUPPLIES</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="editMedicineExpiryDate">Expiry Date</label>
+                            <input type="date" 
+                                   id="editMedicineExpiryDate" 
+                                   name="expiry_date" 
+                                   required 
+                                   pattern="\d{4}-\d{2}-\d{2}"
+                                   placeholder="YYYY-MM-DD"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="editMedicineStock">Starting Stock</label>
+                            <input type="number" 
+                                   id="editMedicineStock" 
+                                   name="beginning_stock" 
+                                   required 
+                                   min="0"
+                                   placeholder="Enter starting stock quantity"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="editMedicineReplenished">Replenished Stock</label>
+                            <input type="number" 
+                                   id="editMedicineReplenished" 
+                                   name="replenished_stock" 
+                                   required 
+                                   min="0"
+                                   placeholder="Enter replenished stock quantity"
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="flex justify-end mt-6">
+                            <button type="button" onclick="closeEditModal()" 
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mr-2">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Medicine Modal -->
+        <div id="deleteMedicineModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full modal-overlay">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">Delete Medicine</h3>
+                    <form action="/reports/medicines/delete" method="POST" class="mt-4">
+                        <input type="hidden" id="deleteMedicineId" name="id">
+                        <input type="hidden" id="deleteMedicineYear" name="year" value="<%= year %>">
+                        <input type="hidden" id="deleteMedicineMonth" name="month" value="<%= month %>">
+                        <div class="mb-4">
+                            <p class="text-gray-700 mb-2">Are you sure you want to delete <span id="deleteMedicineName" class="font-bold"></span>?</p>
+                            <p class="text-red-600 text-sm">WARNING: This action will also delete the medicine from your selected date onwards. You cannot undo this action.</p>
+                        </div>
+
+                        <!-- Password Verification -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">Verify Password:</h4>
+                            <div class="relative">
+                                <input type="password" 
+                                       id="deleteMedicinePassword" 
+                                       name="password"
+                                       placeholder="Enter your password"
+                                       required
+                                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button type="button" 
+                                        onclick="togglePasswordVisibility('deleteMedicinePassword')"
+                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end mt-6">
+                            <button type="button" onclick="closeDeleteModal()" 
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mr-2">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
+                                <i class="fas fa-trash-alt mr-2"></i>
+                                Delete
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Replenish Modal -->
+        <div id="replenishModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full modal-overlay">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Replenish Stock for <span id="replenishMedicineName" class="font-bold"></span></h3>
+                    <form id="replenishForm" method="POST" action="/medicines/replenish" class="mt-4">
+                        <input type="hidden" id="replenishMedicineId" name="id">
+                        <div class="mt-2">
+                            <label for="replenishQuantity" class="block text-sm font-medium text-gray-700">Quantity to Add</label>
+                            <input type="number" id="replenishQuantity" name="quantity" required min="1"
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="button" onclick="closeReplenishModal()"
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mr-2">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                <i class="fas fa-plus mr-2"></i>
+                                Replenish
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full overflow-hidden max-w-full">
+        <div class="overflow-x-auto">
+            <div class="scroll-container pr-1">
+                <% if (!report || (!report.medicines?.length && !report.medical_supplies?.length && !report.dental_supplies?.length && !report.other_supplies?.length)) { %>
+                    <div class="flex flex-col items-center justify-center py-12">
+                        <i class="fas fa-calendar-times text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-xl text-gray-600 font-medium">No data available for <%= new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'long' }) %> <%= year %></p>
+                    </div>
+                <% } else { %>
+                    <table class="min-w-full divide-y divide-gray-200 border border-gray-300 table-fixed" id="inventoryTable">
+                        <thead class="bg-gray-50 sticky">
+                            <tr class="divide-x divide-gray-300">
+                                <th class="w-[5%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">UNITS</th>
+                                <th class="w-[15%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">MEDICINES</th>
+                                <th class="w-[8%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">Expiry date</th>
+                                <th class="w-[7%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">Replenished Meds</th>
+                                <th class="w-[7%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">STARTING STOCKS</th>
+                                <% 
+                                    const selectedDate = new Date(parseInt(year), parseInt(month) - 1);
+                                    const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+                                %>
+                                <th class="w-[40%] text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" colspan="<%= daysInMonth %>">QUANTITY ISSUED FOR <%= new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'long' }).toUpperCase() %> <%= year %></th>
+                                <th class="w-[7%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">TOTAL ISSUED</th>
+                                <th class="w-[6%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">BALANCE</th>
+                                <th class="w-[5%] px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase whitespace-normal bg-gray-50" rowspan="2">ACTIONS</th>
+                            </tr>
+                            <tr class="divide-x divide-gray-300">
+                                <% for(let i = 1; i <= daysInMonth; i++) { %>
+                                    <th class="w-[1.29%] px-0.5 py-2 text-center text-[10px] font-medium text-gray-500 uppercase whitespace-nowrap bg-gray-50"><%= i %></th>
+                                <% } %>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <!-- Medicines Section -->
+                            <tr data-category-header="medicines">
+                                <td colspan="<%= daysInMonth + 8 %>" class="px-2 py-2 text-sm font-bold text-gray-900 bg-blue-100 text-center">MEDICINES</td>
+                            </tr>
+                            <% if (report && report.medicines && report.medicines.length > 0) { %>
+                                <% report.medicines.forEach(function(item) { %>
+                                    <tr data-name="<%= item.name %>" data-medicine-id="<%= item.id %>" class="divide-x divide-gray-300 bg-blue-50 hover:bg-blue-100 transition-colors duration-150">
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.unit %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.name %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <%= item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center space-x-1">
+                                                <span><%= item.replenished_stock || 0 %></span>
+                                                <button onclick="openReplenishModal('<%= item.id %>', '<%= item.name %>')" 
+                                                        class="inline-flex items-center justify-center w-6 h-6 text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                        title="Replenish Stock">
+                                                    <i class="fas fa-plus text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.beginning_stock %><% if (item.replenished_stock && parseInt(item.replenished_stock) > 0) { %>(+<%= item.replenished_stock %>)<% } %></td>
+                                        <% for(let i = 1; i <= daysInMonth; i++) { %>
+                                            <td class="px-0.5 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.daily_usage[i] || '' %></td>
+                                        <% } %>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap">
+                                            <% 
+                                                let totalIssued = 0;
+                                                for(let i = 1; i <= daysInMonth; i++) {
+                                                    if(item.daily_usage[i]) {
+                                                        totalIssued += parseInt(item.daily_usage[i]);
+                                                    }
+                                                }
+                                            %>
+                                            <%= totalIssued %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-center whitespace-nowrap <%= (parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0) - totalIssued) <= 10 ? 'text-red-600 font-semibold' : 'text-gray-900' %>">
+                                            <%= parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0) - totalIssued %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <div class="flex justify-center space-x-2">
+                                                <button 
+                                                    data-item="<%= encodeURIComponent(JSON.stringify(item)) %>"
+                                                    onclick="openEditModal(this.dataset.item)" 
+                                                    class="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                    title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="openDeleteModal('<%- item.id %>', '<%- item.name %>')" 
+                                                        class="text-red-600 hover:text-red-800 transition-colors duration-200"
+                                                        title="Delete">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } %>
+
+                            <!-- Medical Supplies Section -->
+                            <tr data-category-header="medical-supplies">
+                                <td colspan="<%= daysInMonth + 8 %>" class="px-2 py-2 text-sm font-bold text-gray-900 bg-green-100 text-center">MEDICAL SUPPLIES</td>
+                            </tr>
+                            <% if (report && report.medical_supplies && report.medical_supplies.length > 0) { %>
+                                <% report.medical_supplies.forEach(function(item) { %>
+                                    <tr data-name="<%= item.name %>" data-medicine-id="<%= item.id %>" class="divide-x divide-gray-300 bg-green-50 hover:bg-green-100 transition-colors duration-150">
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.unit %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.name %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <%= item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center space-x-1">
+                                                <span><%= item.replenished_stock || 0 %></span>
+                                                <button onclick="openReplenishModal('<%= item.id %>', '<%= item.name %>')" 
+                                                        class="inline-flex items-center justify-center w-6 h-6 text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                        title="Replenish Stock">
+                                                    <i class="fas fa-plus text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.beginning_stock %><% if (item.replenished_stock && parseInt(item.replenished_stock) > 0) { %>(+<%= item.replenished_stock %>)<% } %></td>
+                                        <% for(let i = 1; i <= daysInMonth; i++) { %>
+                                            <td class="px-0.5 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.daily_usage[i] || '' %></td>
+                                        <% } %>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.total_issued || 0 %></td>
+                                        <td class="px-2 py-1 text-sm text-center whitespace-nowrap <%= ((parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0)) - parseInt(item.total_issued || 0)) <= 10 ? 'text-red-600 font-semibold' : 'text-gray-900' %>">
+                                            <%= (parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0)) - parseInt(item.total_issued || 0) %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <div class="flex justify-center space-x-2">
+                                                <button 
+                                                    data-item="<%= encodeURIComponent(JSON.stringify(item)) %>"
+                                                    onclick="openEditModal(this.dataset.item)" 
+                                                    class="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                    title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="openDeleteModal('<%- item.id %>', '<%- item.name %>')" 
+                                                        class="text-red-600 hover:text-red-800 transition-colors duration-200"
+                                                        title="Delete">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } %>
+
+                            <!-- Dental Supplies Section -->
+                            <tr data-category-header="dental-supplies">
+                                <td colspan="<%= daysInMonth + 8 %>" class="px-2 py-2 text-sm font-bold text-gray-900 bg-pink-100 text-center">DENTAL SUPPLIES</td>
+                            </tr>
+                            <% if (report && report.dental_supplies && report.dental_supplies.length > 0) { %>
+                                <% report.dental_supplies.forEach(function(item) { %>
+                                    <tr data-name="<%= item.name %>" data-medicine-id="<%= item.id %>" class="divide-x divide-gray-300 bg-pink-50 hover:bg-pink-100 transition-colors duration-150">
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.unit %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.name %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <%= item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center space-x-1">
+                                                <span><%= item.replenished_stock || 0 %></span>
+                                                <button onclick="openReplenishModal('<%= item.id %>', '<%= item.name %>')" 
+                                                        class="inline-flex items-center justify-center w-6 h-6 text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                        title="Replenish Stock">
+                                                    <i class="fas fa-plus text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.beginning_stock %><% if (item.replenished_stock && parseInt(item.replenished_stock) > 0) { %>(+<%= item.replenished_stock %>)<% } %></td>
+                                        <% for(let i = 1; i <= daysInMonth; i++) { %>
+                                            <td class="px-0.5 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.daily_usage[i] || '' %></td>
+                                        <% } %>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.total_issued || 0 %></td>
+                                        <td class="px-2 py-1 text-sm text-center whitespace-nowrap <%= ((parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0)) - parseInt(item.total_issued || 0)) <= 10 ? 'text-red-600 font-semibold' : 'text-gray-900' %>">
+                                            <%= (parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0)) - parseInt(item.total_issued || 0) %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <div class="flex justify-center space-x-2">
+                                                <button 
+                                                    data-item="<%= encodeURIComponent(JSON.stringify(item)) %>"
+                                                    onclick="openEditModal(this.dataset.item)" 
+                                                    class="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                    title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="openDeleteModal('<%- item.id %>', '<%- item.name %>')" 
+                                                        class="text-red-600 hover:text-red-800 transition-colors duration-200"
+                                                        title="Delete">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } %>
+
+                            <!-- Other Supplies Section -->
+                            <tr data-category-header="other-supplies">
+                                <td colspan="<%= daysInMonth + 8 %>" class="px-2 py-2 text-sm font-bold text-gray-900 bg-gray-200 text-center">OTHER SUPPLIES</td>
+                            </tr>
+                            <% if (report && report.other_supplies && report.other_supplies.length > 0) { %>
+                                <% report.other_supplies.forEach(function(item) { %>
+                                    <tr data-name="<%= item.name %>" data-medicine-id="<%= item.id %>" class="divide-x divide-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors duration-150">
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.unit %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center"><%= item.name %></td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <%= item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center space-x-1">
+                                                <span><%= item.replenished_stock || 0 %></span>
+                                                <button onclick="openReplenishModal('<%= item.id %>', '<%= item.name %>')" 
+                                                        class="inline-flex items-center justify-center w-6 h-6 text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                        title="Replenish Stock">
+                                                    <i class="fas fa-plus text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.beginning_stock %><% if (item.replenished_stock && parseInt(item.replenished_stock) > 0) { %>(+<%= item.replenished_stock %>)<% } %></td>
+                                        <% for(let i = 1; i <= daysInMonth; i++) { %>
+                                            <td class="px-0.5 py-1 text-sm text-gray-900 text-center whitespace-nowrap"><%= item.daily_usage[i] || '' %></td>
+                                        <% } %>
+                                        <td class="px-2 py-1 text-sm text-gray-900 text-center whitespace-nowrap">
+                                            <% 
+                                                let totalIssued = 0;
+                                                for(let i = 1; i <= daysInMonth; i++) {
+                                                    if(item.daily_usage[i]) {
+                                                        totalIssued += parseInt(item.daily_usage[i]);
+                                                    }
+                                                }
+                                            %>
+                                            <%= totalIssued %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-center whitespace-nowrap <%= (parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0) - totalIssued) <= 10 ? 'text-red-600 font-semibold' : 'text-gray-900' %>">
+                                            <%= parseInt(item.beginning_stock) + parseInt(item.replenished_stock || 0) - totalIssued %>
+                                        </td>
+                                        <td class="px-2 py-1 text-sm text-gray-900 whitespace-nowrap text-center">
+                                            <div class="flex justify-center space-x-2">
+                                                <button 
+                                                    data-item="<%= encodeURIComponent(JSON.stringify(item)) %>"
+                                                    onclick="openEditModal(this.dataset.item)" 
+                                                    class="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                                    title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="openDeleteModal('<%- item.id %>', '<%- item.name %>')" 
+                                                        class="text-red-600 hover:text-red-800 transition-colors duration-200"
+                                                        title="Delete">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signatories Modal -->
+    <div id="signatoriesModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full modal-overlay">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Manage Report Signatories</h3>
+                <form id="signatoriesForm" class="mt-4">
+                    <!-- Prepared by -->
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Prepared by:</h4>
+                        <div class="space-y-2">
+                            <input type="text" 
+                                   id="preparedByName" 
+                                   placeholder="Name"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" 
+                                   id="preparedByPosition" 
+                                   placeholder="Position"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Noted by -->
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Noted by:</h4>
+                        <div class="space-y-2">
+                            <input type="text" 
+                                   id="notedByName" 
+                                   placeholder="Name"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" 
+                                   id="notedByPosition" 
+                                   placeholder="Position"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Password Verification -->
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Verify Password:</h4>
+                        <div class="relative">
+                            <input type="password" 
+                                   id="signatoriesPassword" 
+                                   placeholder="Enter your password"
+                                   required
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button type="button" 
+                                    onclick="togglePasswordVisibility('signatoriesPassword')"
+                                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-6">
+                        <button type="button" onclick="closeSignatoriesModal()" 
+                                class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mr-2">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                            Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        border-radius: 4px;
+        color: white;
+        z-index: 9999;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.3s ease-in-out;
+    }
+
+    .notification.success {
+        background-color: #48bb78;
+    }
+
+    .notification.error {
+        background-color: #f56565;
+    }
+
+    .notification.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+
+<style type="text/css">
+     
+    .inventory-heading {
+        font-size: 1.5rem;
+        line-height: 1rem;
+        margin-top: 2rem;
+    }
+
+     
+    .scroll-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .scroll-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .scroll-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .scroll-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+     
+    .scroll-container {
+        max-height: calc(100vh - 320px);
+        overflow-y: scroll;
+        position: relative;
+        margin-right: 0px;
+        margin-bottom: 0;
+    }
+
+     
+    thead.sticky {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+     
+    thead.sticky::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    thead.sticky th {
+        position: relative;
+        background-clip: padding-box;
+    }
+
+     
+    thead.sticky tr:last-child th {
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+     
+    tr[data-category-header] {
+        position: sticky;
+        top: 50px;
+        z-index: 1;
+    }
+
+     
+    tr[data-category-header] td {
+        position: relative;
+        background-clip: padding-box;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+     
+    .overflow-hidden {
+        -ms-overflow-style: none;   
+        scrollbar-width: none;      
+    }
+
+     
+    #inventoryTable {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    #inventoryTable th,
+    #inventoryTable td {
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    #inventoryTable th:first-child,
+    #inventoryTable td:first-child {
+        border-left: 1px solid #e5e7eb;
+    }
+
+    #inventoryTable thead th {
+        border-top: 1px solid #e5e7eb;
+    }
+
+     
+    thead.sticky,
+    tr[data-category-header] {
+        position: sticky !important;
+        background-clip: padding-box;
+    }
+
+     
+    thead.sticky {
+        z-index: 2 !important;
+    }
+
+    tr[data-category-header] {
+        z-index: 1 !important;
+    }
+
+     
+    thead.sticky th {
+        background-color: rgb(249 250 251) !important;  
+    }
+
+    tr[data-category-header] td.bg-blue-100 { background-color: rgb(219 234 254) !important; }
+    tr[data-category-header] td.bg-green-100 { background-color: rgb(220 252 231) !important; }
+    tr[data-category-header] td.bg-pink-100 { background-color: rgb(252 231 243) !important; }
+    tr[data-category-header] td.bg-gray-200 { background-color: rgb(229 231 235) !important; }
+
+     
+    .modal-overlay {
+        z-index: 100 !important;
+    }
+
+     
+    #addMedicineModal,
+    #editMedicineModal,
+    #deleteMedicineModal,
+    #replenishModal {
+        z-index: 100;
+    }
+
+     
+    .replenish-btn {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .replenish-btn:hover {
+        transform: scale(1.1);
+    }
+</style>
+
+<style type="text/css" media="print">
+    @page { 
+        size: landscape;
+        margin: 4mm;
+    }
+    nav, form, button { 
+        display: none !important; 
+    }
+    .shadow-md { 
+        box-shadow: none !important; 
+    }
+    table {
+        font-size: 11pt !important;
+        width: 100% !important;
+    }
+    th, td {
+        padding: 3px !important;
+    }
+    .overflow-x-auto {
+        overflow: visible !important;
+    }
+     
+    th:nth-child(n+5):nth-child(-n+35),
+    td:nth-child(n+5):nth-child(-n+35) {
+        width: 12px !important;
+        padding: 0 1px !important;
+    }
+     
+    #searchInput, #searchInput + div {
+        display: none !important;
+    }
+     
+    button:not(.print-button) {
+        display: none !important;
+    }
+     
+    thead.sticky,
+    tr[data-category-header] {
+        position: static !important;
+    }
+     
+    .scroll-container {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+</style> 
+
+<!-- Print-specific styles -->
+<style>
+    @media print {
+        @page {
+            size: landscape;
+            margin: 4mm;
+        }
+        
+        body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            transform: scale(1.095) !important;
+            transform-origin: top left !important;
+        }
+
+         
+        .bg-white.rounded-lg {
+            width: 102.5% !important;  
+        }
+
+         
+        .no-print, 
+        header, 
+        footer,
+        nav,
+        .actions-column,
+        button:not(.print-button),
+        #searchInput,
+        #searchInput + div,
+        form {
+            display: none !important;
+        }
+
+         
+        table th:nth-child(39),
+        table td:nth-child(39),
+        th.actions-column,
+        td.actions-column,
+        .actions {
+            display: none !important;
+            width: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+
+         
+        th:nth-child(-n+38),
+        td:nth-child(-n+38) {
+            display: table-cell !important;
+        }
+
+         
+        table th:last-child,
+        table td:last-child {
+            display: none !important;
+        }
+
+         
+        table {
+            border-collapse: collapse;
+            width: 100% !important;
+            table-layout: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 9.5pt !important;
+        }
+
+         
+        th, td {
+            border: 1px solid #000 !important;
+            padding: 2px !important;
+            font-size: 9.5pt !important;
+            line-height: 1.2 !important;
+        }
+
+         
+        td:nth-child(1) {  
+            white-space: normal !important;
+            height: auto !important;
+            min-height: 25px !important;
+        }
+        
+        td:nth-child(2) {  
+            white-space: normal !important;
+            height: auto !important;
+            min-height: 25px !important;
+            word-break: break-word !important;
+        }
+
+         
+        td:nth-child(n+3):nth-child(-n+38) {
+            white-space: nowrap !important;
+        }
+
+         
+        thead th {
+            font-size: 10pt !important;
+            font-weight: bold !important;
+            padding: 3px !important;
+            white-space: normal !important;
+        }
+
+         
+        [data-category-header] td {
+            font-size: 10pt !important;
+            font-weight: bold !important;
+            padding: 4px !important;
+        }
+
+         
+        th:nth-child(1), td:nth-child(1) { width: 4% !important; }  
+        th:nth-child(2), td:nth-child(2) { width: 13% !important; }  
+        th:nth-child(3), td:nth-child(3) { width: 5% !important; }  
+        th:nth-child(4), td:nth-child(4) { width: 5% !important; }  
+        th:nth-child(5), td:nth-child(5) { width: 5% !important; }  
+        
+         
+        th:nth-child(n+6):nth-child(-n+36),
+        td:nth-child(n+6):nth-child(-n+36) {
+            width: 1.8% !important;
+            padding: 1px 2px !important;
+            text-align: center !important;
+            font-size: 9pt !important;
+            display: table-cell !important;  
+        }
+
+         
+        th:nth-child(37), td:nth-child(37) { width: 5% !important; }  
+        th:nth-child(38), td:nth-child(38) { width: 5% !important; }  
+
+         
+        .medicine-row { background-color: #e6f3ff !important; }
+        .medical-supplies-row { background-color: #ffffcc !important; }
+        .dental-supplies-row { background-color: #ffd9ec !important; }
+        .other-supplies-row { background-color: #ffe6f2 !important; }
+
+         
+        .shadow-md, .shadow-lg, .shadow-sm {
+            box-shadow: none !important;
+        }
+
+         
+        .overflow-x-auto, .overflow-y-auto {
+            overflow: visible !important;
+        }
+
+         
+        .sticky, [data-category-header] {
+            position: static !important;
+        }
+
+         
+        .scroll-container {
+            max-height: none !important;
+        }
+
+         
+        .px-4, .py-4, .p-4, .m-4 {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+         
+        td { vertical-align: middle !important; }
+        td:first-child { text-align: center !important; }
+        td:nth-child(2) { text-align: left !important; padding-left: 4px !important; }
+        td:nth-child(n+3) { text-align: center !important; }
+
+         
+        td:nth-child(n+4):nth-child(-n+38) {
+            font-family: "Courier New", monospace !important;
+            font-weight: 500 !important;
+        }
+
+         
+        tr {
+            page-break-inside: avoid !important;
+            min-height: 25px !important;
+        }
+
+         
+        th[style*="display: none"],
+        td[style*="display: none"] {
+            display: table-cell !important;
+        }
+
+         
+        tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+         
+        tr[data-category-header] {
+            page-break-before: auto !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
+
+         
+        thead {
+            display: table-header-group !important;
+            break-inside: avoid !important;
+        }
+
+         
+        tbody {
+            break-inside: auto !important;
+        }
+
+         
+        tbody tr {
+            break-inside: avoid !important;
+        }
+
+         
+        .table-container {
+            break-inside: auto !important;
+        }
+    }
+</style><!-- End of file -->
+
+<!-- Add this at the top of the file, after the notification div -->
+<style>
+    @keyframes highlight-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+    }
+
+    .highlight-element {
+        animation: highlight-pulse 2s infinite;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if we should highlight elements
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('highlight') === 'report') {
+            // Highlight the month and year selectors
+            const monthSelect = document.querySelector('select[name="month"]');
+            const yearSelect = document.querySelector('select[name="year"]');
+            const generateReportBtn = document.querySelector('button[onclick="toggleReportDropdown()"]');
+            
+            if (monthSelect && yearSelect && generateReportBtn) {
+                [monthSelect, yearSelect, generateReportBtn].forEach(el => {
+                    el.classList.add('highlight-element');
+                    // Remove highlight after 5 seconds
+                    setTimeout(() => {
+                        el.classList.remove('highlight-element');
+                    }, 5000);
+                });
+            }
+
+            // Remove the highlight parameter from URL
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('highlight');
+            window.history.replaceState({}, '', newUrl);
+        }
+    });
+</script>
+
+<script>
+function showNotification(message, type = 'success') {
+    // Remove any existing notifications
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    // Create new notification
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    // Add to document
+    document.body.appendChild(notification);
+
+    // Trigger animation
+    setTimeout(() => notification.classList.add('show'), 10);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Check URL parameters to open replenish modal if needed
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    const medicineId = urlParams.get('medicineId');
+    
+    if (action === 'replenish' && medicineId) {
+        // Find the medicine name from the table
+        const medicineRow = document.querySelector(`tr[data-medicine-id="${medicineId}"]`);
+        if (medicineRow) {
+            const medicineName = medicineRow.querySelector('td:nth-child(2)').textContent.trim();
+            openReplenishModal(medicineId, medicineName);
+        }
+    }
+    
+    // Format date inputs to use YYYY-MM-DD
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        // Set the default value format
+        if (input.value) {
+            const date = new Date(input.value);
+            if (!isNaN(date.getTime())) {
+                input.value = date.toISOString().split('T')[0];
+            }
+        }
+        
+        // Handle new input
+        input.addEventListener('input', function(e) {
+            const date = new Date(this.value);
+            if (!isNaN(date.getTime())) {
+                this.value = date.toISOString().split('T')[0];
+            }
+        });
+    });
+
+    // Add Medicine form
+    const addForm = document.getElementById('addMedicineForm');
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // Convert FormData to JSON
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            fetch(`/medicines/add?year=<%= year %>&month=<%= month %>`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    closeAddModal();
+                    // Reload first, then show notification
+                    const url = new URL(window.location);
+                    url.searchParams.set('notification', 'Medicine added successfully');
+                    url.searchParams.set('notificationType', 'success');
+                    window.location.href = url.toString();
+                } else {
+                    throw new Error('Failed to add medicine');
+                }
+            })
+            .catch(error => {
+                showNotification('Failed to add medicine', 'error');
+            });
+        });
+    }
+
+    // Edit Medicine form
+    const editForm = document.getElementById('editMedicineForm');
+    
+    if (editForm) {
+        editForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                id: formData.get('id'),
+                name: formData.get('name'),
+                unit: formData.get('unit'),
+                category: formData.get('category'),
+                expiry_date: formData.get('expiry_date'),
+                beginning_stock: formData.get('beginning_stock'),
+                replenished_stock: formData.get('replenished_stock'),
+                year: formData.get('year'),
+                month: formData.get('month')
+            };
+            
+            try {
+                const response = await fetch('/medicines/edit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+
+                if (response.ok) {
+                    closeEditModal();
+                    // Reload the page with the same month and year
+                    const url = new URL(window.location);
+                    url.searchParams.set('notification', result.message || 'Medicine updated successfully');
+                    url.searchParams.set('notificationType', 'success');
+                    window.location.href = url.toString();
+                } else {
+                    throw new Error(result.error || 'Failed to update medicine');
+                }
+            } catch (error) {
+                showNotification(error.message || 'Failed to update medicine', 'error');
+            }
+        });
+    }
+
+    // Delete Medicine form
+    const deleteForm = document.querySelector('#deleteMedicineModal form');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const medicineId = document.getElementById('deleteMedicineId').value;
+            const password = document.getElementById('deleteMedicinePassword').value;
+            const medicineName = document.getElementById('deleteMedicineName').textContent;
+            
+            try {
+                const response = await fetch('/reports/medicines/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        id: medicineId,
+                        year: '<%= year %>',
+                        month: '<%= month %>',
+                        password: password 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to delete medicine');
+                }
+                
+                closeDeleteModal();
+                showNotification(`${medicineName} deleted from <%= month %>/<%= year %> onwards`);
+                setTimeout(() => location.reload(), 1500);
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        });
+    }
+
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+            }
+        });
+    }
+});
+
+function filterTable(searchText) {
+    const table = document.getElementById('inventoryTable');
+    const rows = table.getElementsByTagName('tr');
+    const searchLower = searchText.toLowerCase();
+
+    const visibleInCategory = {
+        'medicines': 0,
+        'medical-supplies': 0,
+        'dental-supplies': 0,
+        'other-supplies': 0
+    };
+
+    let currentCategory = '';
+
+    for (let row of rows) {
+        if (row.hasAttribute('data-category-header')) {
+            currentCategory = row.getAttribute('data-category-header');
+            continue;
+        }
+
+        if (row.parentElement.tagName === 'THEAD') continue;
+
+        if (row.cells.length <= 1) continue;
+
+        const nameCell = row.cells[1]; 
+        if (nameCell) {
+            const name = nameCell.textContent || nameCell.innerText;
+            const shouldShow = name.toLowerCase().includes(searchLower);
+            row.style.display = shouldShow ? '' : 'none';
+            if (shouldShow && currentCategory) {
+                visibleInCategory[currentCategory]++;
+            }
+        }
+    }
+
+    currentCategory = '';
+    for (let row of rows) {
+        if (row.hasAttribute('data-category-header')) {
+            currentCategory = row.getAttribute('data-category-header');
+            row.style.display = visibleInCategory[currentCategory] > 0 ? '' : 'none';
+        }
+    }
+}
+
+function openAddModal() {
+    const form = document.querySelector('#addMedicineModal form');
+    if (form) {
+        form.reset();
+    }
+    document.getElementById('addMedicineModal').classList.remove('hidden');
+}
+
+function closeAddModal() {
+    document.getElementById('addMedicineModal').classList.add('hidden');
+}
+
+function openEditModal(itemData) {
+    try {
+        const item = typeof itemData === 'string' ? JSON.parse(decodeURIComponent(itemData)) : itemData;
+        
+        const monthSelect = document.querySelector('select[name="month"]');
+        const yearSelect = document.querySelector('select[name="year"]');
+        const selectedMonth = monthSelect.value;
+        const selectedYear = yearSelect.value;
+        
+        document.getElementById('editMedicineId').value = item.id;
+        document.getElementById('editMedicineName').value = item.name;
+        document.getElementById('editMedicineNameTitle').textContent = item.name;
+        document.getElementById('editMedicineUnit').value = item.unit;
+        document.getElementById('editMedicineCategory').value = item.category;
+        document.getElementById('editMedicineExpiryDate').value = item.expiry_date || '';
+        document.getElementById('editMedicineStock').value = item.beginning_stock || 0;
+        document.getElementById('editMedicineReplenished').value = item.replenished_stock || 0;
+        
+        document.getElementById('editMedicineYear').value = selectedYear;
+        document.getElementById('editMedicineMonth').value = selectedMonth;
+        
+        document.getElementById('editMedicineModal').classList.remove('hidden');
+    } catch (error) {
+        showNotification('Error opening edit modal', 'error');
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('editMedicineModal').classList.add('hidden');
+}
+
+function openDeleteModal(id, name) {
+    document.getElementById('deleteMedicineId').value = id;
+    document.getElementById('deleteMedicineName').textContent = name;
+    document.getElementById('deleteMedicineModal').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteMedicineModal').classList.add('hidden');
+}
+
+function searchMedicines() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('tr[data-name]');
+    
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name').toLowerCase();
+        if (name.includes(searchTerm)) {
+            row.classList.remove('hidden');
+        } else {
+            row.classList.add('hidden');
+        }
+    });
+}
+
+function openReplenishModal(medicineId, medicineName) {
+    document.getElementById('replenishMedicineId').value = medicineId;
+    document.getElementById('replenishMedicineName').textContent = medicineName;
+    document.getElementById('replenishModal').classList.remove('hidden');
+}
+
+function closeReplenishModal() {
+    document.getElementById('replenishModal').classList.add('hidden');
+    document.getElementById('replenishForm').reset();
+}
+
+document.getElementById('replenishForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const urlParams = new URLSearchParams(window.location.search);
+    const data = {
+        id: formData.get('id'),
+        quantity: parseInt(formData.get('quantity'), 10),
+        year: urlParams.get('year') || new Date().getFullYear().toString(),
+        month: urlParams.get('month') || (new Date().getMonth() + 1).toString().padStart(2, '0')
+    };
+
+    try {
+        const response = await fetch('/medicines/replenish', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to replenish stock');
+        }
+
+        closeReplenishModal();
+        showNotification('Stock replenished successfully');
+        
+        // Clear URL parameters and reload the page
+        const url = new URL(window.location.href);
+        url.searchParams.delete('action');
+        url.searchParams.delete('medicineId');
+        window.history.replaceState({}, '', url);
+        
+        setTimeout(() => window.location.href = url.toString(), 1000);
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+});
+
+// Function to get background color based on category
+function getCategoryColor(category) {
+    switch(category.trim().toUpperCase()) {
+        case 'MEDICINES': return [219, 234, 254]; // bg-blue-100
+        case 'MEDICAL SUPPLIES': return [220, 252, 231]; // bg-green-100
+        case 'DENTAL SUPPLIES': return [252, 231, 243]; // bg-pink-100
+        case 'OTHER SUPPLIES': return [229, 231, 235]; // bg-gray-200
+        default: return [255, 255, 255];
+    }
+}
+
+function getRowColor(category) {
+    switch(category.trim().toUpperCase()) {
+        case 'MEDICINES': return [239, 246, 255]; // bg-blue-50
+        case 'MEDICAL SUPPLIES': return [240, 253, 244]; // bg-green-50
+        case 'DENTAL SUPPLIES': return [253, 242, 248]; // bg-pink-50
+        case 'OTHER SUPPLIES': return [249, 250, 251]; // bg-gray-50
+        default: return [255, 255, 255];
+    }
+}
+
+// Function to generate PDF for finished transactions
+async function generatePdfPreview(isDownload = false) {
+    try {
+        const table = document.getElementById('inventoryTable');
+        if (!table) {
+            throw new Error('Table not found');
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentDate = new Date();
+        const selectedMonth = urlParams.get('month') || (currentDate.getMonth() + 1).toString().padStart(2, '0');
+        const selectedYear = urlParams.get('year') || currentDate.getFullYear().toString();
+
+        if (!selectedMonth || !selectedYear) {
+            throw new Error('Invalid month or year selected');
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        try {
+            doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+            doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+            
+            const fonts = doc.getFontList();
+            if (!fonts['Canterbury']) {
+                throw new Error('Font registration failed');
+            }
+        } catch (fontError) {
+            throw new Error('Failed to add custom fonts to PDF');
+        }
+
+        const pageWidth = doc.internal.pageSize.width;
+        const selectedDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1);
+        const monthName = selectedDate.toLocaleString('default', { month: 'long' });
+        const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+
+        const hasData = table.querySelector('tbody tr:not([data-category-header])');
+        if (!hasData) {
+            throw new Error(`No data available for ${monthName} ${selectedYear}`);
+        }
+
+        // LSPU header
+        doc.addImage('/images/lspu-logo.png', 'PNG', 85, 5, 20, 20);
+        doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 105, 5, 20.8, 20);
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Republic of the Philippines', pageWidth / 2, 15, { align: 'center' });
+        
+        doc.setFontSize(14);
+        doc.setFont('Canterbury', 'normal');
+        doc.text('Laguna State Polytechnic University', pageWidth / 2, 21, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Province of Laguna', pageWidth / 2, 27, { align: 'center' });
+
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'normal');
+        const title = `Medicine Inventory Sheet - ${monthName} ${selectedYear}`;
+        doc.text(title, pageWidth / 2, 45, { align: 'center' });
+
+        let tableData = {
+            head: [['UNITS', 'MEDICINES', 'EXPIRY DATE', 'REPLENISHED', 'STARTING STOCKS']],
+            body: []
+        };
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            tableData.head[0].push(i.toString());
+        }
+        tableData.head[0].push('TOTAL', 'BALANCE');
+
+        let currentCategory = '';
+        const rows = table.querySelectorAll('tbody tr:not(.hidden)');
+        rows.forEach(row => {
+            if (row.hasAttribute('data-category-header')) {
+                const categoryCell = row.querySelector('td');
+                if (categoryCell) {
+                    currentCategory = categoryCell.textContent.trim().toUpperCase();
+                    const categoryName = categoryCell.textContent.trim();
+                    tableData.body.push([{
+                        content: categoryName,
+                        colSpan: daysInMonth + 7,
+                        styles: {
+                            fillColor: getCategoryColor(currentCategory),
+                            textColor: [50, 50, 50],
+                            fontSize: 8,
+                            font: 'helvetica',
+                            fontStyle: 'bold',
+                            halign: 'center'
+                        }
+                    }]);
+                }
+            } else {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 5) {
+                    const rowData = [];
+
+                    const basicData = [
+                        cells[0]?.textContent?.trim() || '',  // UNITS
+                        cells[1]?.textContent?.trim() || '',  // MEDICINES
+                        cells[2]?.textContent?.trim() || '',  // EXPIRY DATE
+                        cells[3]?.querySelector('span')?.textContent?.trim() || '0',  // REPLENISHED
+                        cells[4]?.textContent?.trim() || ''   // STARTING STOCKS
+                    ];
+
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        const usageCell = cells[4 + i];
+                        basicData.push(usageCell?.textContent?.trim() || '');
+                    }
+
+                    if (cells.length >= 6 + daysInMonth) {
+                        basicData.push(
+                            cells[5 + daysInMonth]?.textContent?.trim() || '0',  // TOTAL
+                            cells[6 + daysInMonth]?.textContent?.trim() || '0'   // BALANCE
+                        );
+                    } else {
+                        basicData.push('0', '0'); 
+                    }
+
+                    const rowDataWithStyles = basicData.map(content => ({
+                        content: content,
+                        styles: {
+                            fillColor: getRowColor(currentCategory)
+                        }
+                    }));
+
+                    tableData.body.push(rowDataWithStyles);
+                }
+            }
+        });
+
+        // Generate table
+        doc.autoTable({
+            startY: 55,
+            head: tableData.head,
+            body: tableData.body,
+            theme: 'grid',
+            styles: {
+                font: 'helvetica',
+                fontSize: 7,
+                cellPadding: 1,
+                halign: 'center',
+                valign: 'middle',
+                lineWidth: 0.1,
+                lineColor: [80, 80, 80]
+            },
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [50, 50, 50],
+                fontSize: 7,
+                font: 'helvetica',
+                fontStyle: 'bold',
+                halign: 'center',
+                valign: 'middle'
+            },
+            columnStyles: {
+                0: { cellWidth: 12 }, // UNITS
+                1: { cellWidth: 30 }, // MEDICINES
+                2: { cellWidth: 15 }, // EXPIRY DATE
+                3: { cellWidth: 12 }, // REPLENISHED
+                4: { cellWidth: 12 }, // STARTING STOCKS
+            },
+            alternateRowStyles: {
+                fillColor: undefined 
+            },
+            margin: { 
+                top: 15,
+                left: 10,
+                right: 10,
+                bottom: 25  // Increased bottom margin to accommodate footer
+            },
+            didDrawPage: function(data) {
+                if (data.pageNumber > 1) {
+                    doc.autoTable.previous.finalY = 15;
+                }
+
+                const pageHeight = doc.internal.pageSize.height;
+                const pageWidth = doc.internal.pageSize.width;
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'normal');
+                doc.text('The report has been automatically generated by the system based on the recorded data.', 15, pageHeight - 15);
+                doc.text('LSPU-OSAS-SF-M10', 15, pageHeight - 8);
+                doc.text('Rev. 0', pageWidth / 2, pageHeight - 8, { align: 'center' });
+                doc.text('10 Aug. 2016', pageWidth - 15, pageHeight - 8, { align: 'right' });
+            },
+            willDrawCell: function(data) {
+                // Check if we're close to the footer
+                const pageHeight = doc.internal.pageSize.height;
+                const footerSpace = 25; // Space reserved for footer
+                if (data.row.y + data.row.height > pageHeight - footerSpace) {
+                    doc.addPage();
+                    data.cursor.y = 15; // Start at top of new page
+                }
+            },
+            didDrawCell: function(data) {
+                if (data.row.index === data.table.body.length - 1 && data.column.index === data.table.columns.length - 1) {
+                    const pageHeight = doc.internal.pageSize.height;
+                    const pageWidth = doc.internal.pageSize.width;
+                    let finalY = data.cell.y + data.cell.height + 15;
+                    
+                    // Check if signatories would overlap with footer
+                    const signatureHeight = 65; // Total height needed for signatures
+                    const footerSpace = 25; // Space needed for footer
+                    
+                    if (finalY + signatureHeight > pageHeight - footerSpace) {
+                        doc.addPage();
+                        finalY = 30; // Start signatures at top of new page
+                    }
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    
+                    // Prepared by
+                    doc.text('Prepared by:', pageWidth - 80, finalY);
+                    doc.setFont('times', 'bold');
+                    doc.text(signatories.preparedBy.name, pageWidth - 80, finalY + 10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(signatories.preparedBy.position, pageWidth - 80, finalY + 15);
+
+                    // Noted by 
+                    doc.text('Noted by:', 20, finalY + 35); 
+                    doc.setFont('times', 'bold');
+                    doc.text(signatories.notedBy.name, 20, finalY + 45);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(signatories.notedBy.position, 20, finalY + 50);
+                }
+            }
+        });
+
+        // Blob for preview
+        const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        // If Preview PDF
+        if (isDownload) {
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `Medicine Inventory Sheet - ${monthName} ${selectedYear}.pdf`;
+            link.click();
+            showNotification('Report downloaded successfully', 'success');
+        } 
+        
+        // If Preview PDF
+        else {
+            window.open(blobUrl, '_blank');
+            showNotification('Report opened in new tab', 'success');
+        }
+
+        // Clean up
+        setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const previewButton = document.getElementById('preview-pdf-btn');
+    const downloadButton = document.getElementById('download-pdf-btn');
+
+    // If Preview PDF
+    if (previewButton) {
+        previewButton.addEventListener('click', function() {
+            generatePdfPreview(false); 
+        });
+    }
+
+    // If Download PDF
+    if (downloadButton) {
+        downloadButton.addEventListener('click', function() {
+            generatePdfPreview(true); 
+        });
+    }
+});
+
+function toggleReportDropdown() {
+    const reportDropdown = document.getElementById('reportDropdown');
+    const detailedDropdown = document.getElementById('detailedReportDropdown');
+    
+    detailedDropdown.classList.add('hidden');
+    
+    reportDropdown.classList.toggle('hidden');
+
+    const closeDropdown = (e) => {
+        if (!e.target.closest('.relative')) {
+            reportDropdown.classList.add('hidden');
+            document.removeEventListener('click', closeDropdown);
+        }
+    };
+
+    setTimeout(() => {
+        document.addEventListener('click', closeDropdown);
+    }, 100);
+}
+
+async function generateMonthlyReport(isDownload = true) {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true,
+            putOnlyUsedFonts: true,
+            floatPrecision: 2
+        });
+
+        try {
+            if (window.canterburyFontData) {
+                
+                doc.addFileToVFS('Canterbury.ttf', window.canterburyFontData);
+                doc.addFont('Canterbury.ttf', 'Canterbury', 'normal');
+
+                const fonts = doc.getFontList();
+                
+                if (!fonts['Canterbury']) {
+                    throw new Error('Font registration failed');
+                }
+            } else {
+                throw new Error('Canterbury font data not found');
+            }
+        } catch (error) {
+        }
+
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+
+        const tableWidth = 155; 
+        const availableWidth = pageWidth;
+        const leftMargin = 25;
+        const rightMargin = 25;
+
+        // Month and year getter
+        const monthSelect = document.querySelector('select[name="month"]');
+        const yearSelect = document.querySelector('select[name="year"]');
+        const monthName = monthSelect.options[monthSelect.selectedIndex].text;
+        const year = yearSelect.value;
+
+        const table = document.getElementById('inventoryTable');
+        if (!table) {
+            throw new Error('Table not found');
+        }
+
+        const tableData = {
+            head: [['NAME OF MEDICINES', 'REMAINING BALANCE']],
+            body: []
+        };
+
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(row => {
+            if (!row.hasAttribute('data-category-header')) {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2) {
+                    const medicineName = cells[1].textContent.trim();
+                    const balance = cells[cells.length - 2].textContent.trim();
+                    if (medicineName && balance) {
+                        tableData.body.push([medicineName, balance]);
+                    }
+                }
+            }
+        });
+
+        doc.autoTable({
+            startY: 70,  
+            head: tableData.head,
+            body: tableData.body,
+            theme: 'grid',
+            styles: {
+                font: 'helvetica',
+                fontSize: 10,
+                cellPadding: 3,
+                halign: 'left',
+                valign: 'middle',
+                lineWidth: 0.1,
+                lineColor: [80, 80, 80]
+            },
+            headStyles: {
+                fillColor: [255, 255, 255],
+                textColor: [0, 0, 0],
+                fontSize: 10,
+                font: 'helvetica',
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { cellWidth: tableWidth * 0.8 }, 
+                1: { cellWidth: tableWidth * 0.2, halign: 'center' }
+            },
+            margin: { 
+                top: 45, 
+                left: leftMargin,
+                right: rightMargin,
+                bottom: 30
+            },
+            didDrawPage: function(data) {
+                // Logos
+                doc.addImage('/images/lspu-logo.png', 'PNG', 30, 10, 25, 25);
+                doc.addImage('/images/bago-ph-logo.png', 'PNG', pageWidth - 55, 10, 26, 25);
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Republic of the Philippines', pageWidth / 2, 20, { align: 'center' });
+            
+                doc.setFontSize(16);
+                try {
+                    const fonts = doc.getFontList();
+                    if (fonts['Canterbury']) {
+                        doc.setFont('Canterbury', 'normal');
+                    } else {
+                        doc.setFont('helvetica', 'bold');
+                    }
+                    doc.setTextColor(0);
+                    const universityName = 'Laguna State Polytechnic University';
+                    doc.text(universityName, pageWidth / 2, 26, { align: 'center' });
+                } catch (error) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Laguna State Polytechnic University', pageWidth / 2, 26, { align: 'center' });
+                }
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Province of Laguna', pageWidth / 2, 32, { align: 'center' });
+
+                
+                if (data.pageNumber === 1) {
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('INVENTORY OF MEDICINES', pageWidth / 2, 45, { align: 'center' });
+                    doc.text(year.toString(), pageWidth / 2, 52, { align: 'center' });
+
+            
+                    doc.setFontSize(12);
+                    doc.text(`MONTH OF ${monthName.toUpperCase()}`, pageWidth / 2, 62, { align: 'center' });
+                }
+
+                const footerY = pageHeight - 5;
+                doc.setFontSize(8);
+
+                doc.setFont('helvetica', 'normal');
+                doc.text('The report has been automatically generated by the system based on the recorded data.', 15, footerY - 10);
+
+                doc.setFont('helvetica', 'normal');
+                doc.text('LSPU-OSAS-SF-M10', 15, footerY - 3);
+                doc.text('Rev. 0', pageWidth / 2, footerY - 3, { align: 'center' });
+                doc.text('10 Aug. 2016', pageWidth - 15, footerY - 3, { align: 'right' });
+            }
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 30;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10.5);
+        
+        const rightEdge = pageWidth - (rightMargin + 50);
+        
+        // Prepared by 
+        doc.text('Prepared by:', rightEdge, finalY, { align: 'left' });
+        doc.setFont('times', 'bold');
+        doc.text(signatories.preparedBy.name, rightEdge, finalY + 10, { align: 'left' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.preparedBy.position, rightEdge, finalY + 15, { align: 'left' });
+
+        // Noted by 
+        const notedByY = finalY + 35;
+        doc.text('Noted by:', 25, notedByY, { align: 'left' });
+        doc.setFont('times', 'bold');
+        doc.text(signatories.notedBy.name, 25, notedByY + 10, { align: 'left' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(signatories.notedBy.position, 25, notedByY + 15, { align: 'left' });
+
+        // Blob for preview
+        const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        
+        if (isDownload) {
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `Medicine_Inventory_${monthName}_${year}.pdf`;
+            link.click();
+            showNotification('Report downloaded successfully', 'success');
+        } else {
+            window.open(blobUrl, '_blank');
+            showNotification('Report opened in new tab', 'success');
+        }
+
+        // Clean up
+        setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+function addImageToPdf(doc, src, x, y, size) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const aspectRatio = img.width / img.height;
+            doc.image(img, x, y, {
+                width: size * aspectRatio,
+                height: size
+            });
+            resolve();
+        };
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+function toggleDetailedReportDropdown() {
+    const detailedDropdown = document.getElementById('detailedReportDropdown');
+    const reportDropdown = document.getElementById('reportDropdown');
+
+    reportDropdown.classList.add('hidden');
+    
+    detailedDropdown.classList.toggle('hidden');
+
+    const closeDropdown = (e) => {
+        if (!e.target.closest('.relative')) {
+            detailedDropdown.classList.add('hidden');
+            document.removeEventListener('click', closeDropdown);
+        }
+    };
+
+    setTimeout(() => {
+        document.addEventListener('click', closeDropdown);
+    }, 100);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const notification = urlParams.get('notification');
+    const notificationType = urlParams.get('notificationType');
+    
+    if (notification) {
+        showNotification(notification, notificationType || 'success');
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+    }
+});
+
+let signatories = {
+    preparedBy: {
+        name: 'GODWIN D. SEVILLANO',
+        position: 'Clinic Staff'
+    },
+    notedBy: {
+        name: 'CHARMAINE BALLESTEROS-SEVILLA, RN, MAN',
+        position: 'Nurse II'
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const savedSignatories = localStorage.getItem('reportSignatories');
+    if (savedSignatories) {
+        signatories = JSON.parse(savedSignatories);
+    }
+});
+
+function openSignatoriesModal() {
+    document.getElementById('preparedByName').value = signatories.preparedBy.name;
+    document.getElementById('preparedByPosition').value = signatories.preparedBy.position;
+    document.getElementById('notedByName').value = signatories.notedBy.name;
+    document.getElementById('notedByPosition').value = signatories.notedBy.position;
+    
+    document.getElementById('signatoriesModal').classList.remove('hidden');
+}
+
+function closeSignatoriesModal() {
+    document.getElementById('signatoriesModal').classList.add('hidden');
+}
+
+document.getElementById('signatoriesForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const password = document.getElementById('signatoriesPassword').value;
+    
+    try {
+        const response = await fetch('/auth/verify-password', {  // Update URL to include /auth prefix
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Invalid password');
+        }
+        
+        // Password check for signatories
+        signatories = {
+            preparedBy: {
+                name: document.getElementById('preparedByName').value.trim().toUpperCase(),
+                position: document.getElementById('preparedByPosition').value.trim()
+            },
+            notedBy: {
+                name: document.getElementById('notedByName').value.trim().toUpperCase(),
+                position: document.getElementById('notedByPosition').value.trim()
+            }
+        };
+        
+        // Save to localStorage
+        localStorage.setItem('reportSignatories', JSON.stringify(signatories));
+        
+        closeSignatoriesModal();
+        showNotification('Signatories updated successfully', 'success');
+    } catch (error) {
+        showNotification('Invalid password. Changes not saved.', 'error');
+    }
+});
+
+// Toggle password visibility
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = input.nextElementSibling.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const monthSelect = document.querySelector('select[name="month"]');
+    const yearSelect = document.querySelector('select[name="year"]');
+    
+    if (monthSelect && yearSelect) {
+        monthSelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+        yearSelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Date getter
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1; 
+    const monthSelect = document.querySelector('select[name="month"]');
+    const yearSelect = document.querySelector('select[name="year"]');
+
+    function validateDateSelection() {
+        const selectedYear = parseInt(yearSelect.value);
+        const selectedMonth = parseInt(monthSelect.value);
+
+        if (selectedYear === currentYear) {
+            Array.from(monthSelect.options).forEach(option => {
+                const monthNum = parseInt(option.value);
+                option.disabled = monthNum > currentMonth;
+            });
+
+            if (selectedMonth > currentMonth) {
+                monthSelect.value = currentMonth.toString().padStart(2, '0');
+                monthSelect.form.submit();
+            }
+        } else {
+            Array.from(monthSelect.options).forEach(option => {
+                option.disabled = false;
+            });
+        }
+
+        Array.from(yearSelect.options).forEach(option => {
+            const year = parseInt(option.value);
+            option.disabled = year > currentYear;
+        });
+    }
+
+    yearSelect.addEventListener('change', function() {
+        validateDateSelection();
+        this.form.submit();
+    });
+
+    monthSelect.addEventListener('change', function() {
+        validateDateSelection();
+        this.form.submit();
+    });
+
+    validateDateSelection();
+});
+
+async function loadFont(url) {
+    try {
+        // First try to use the pre-loaded font data
+        if (window.canterburyFontData) {
+            return window.canterburyFontData;
+        }
+
+        // If not available, fetch it
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const base64Data = arrayBufferToBase64(arrayBuffer);
+        
+        // Cache the result
+        window.canterburyFontData = base64Data;
+        return base64Data;
+    } catch (error) {
+        console.error('Error loading font:', url, error);
+        throw error;
+    }
+}
+
+// Initialize fonts when DOM is loaded
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Only load if not already loaded
+        if (!window.canterburyFontData) {
+            window.canterburyFontData = await loadFont('/fonts/Canterbury.ttf');
+        }
+    } catch (error) {
+        console.error('Error loading fonts:', error);
+        showNotification('Some fonts failed to load. System fonts will be used.', 'warning');
+    }
+});
+</script>

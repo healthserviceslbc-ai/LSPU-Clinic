@@ -1,0 +1,271 @@
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
+            <div class="flex space-x-4">
+                <a href="/users/new" class="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-plus mr-2"></i>
+                    Add New User
+                </a>
+                <a href="/users/register-normal/<%= Date.now() %>" target="_blank" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Register Normal User
+                </a>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="mb-6">
+            <div class="flex gap-4" id="searchForm">
+                <div class="flex-1">
+                    <div class="relative">
+                        <input type="text" name="search" 
+                            value="<%= typeof searchTerm !== 'undefined' ? searchTerm : '' %>" 
+                            placeholder="Search by name, username, or ID..." 
+                            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            id="searchInput">
+                        <div class="absolute left-3 top-2.5 text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-48">
+                    <select name="role" 
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        id="roleSelect">
+                        <option value="all" <%= typeof selectedRole !== 'undefined' && selectedRole === 'all' ? 'selected' : '' %>>All Roles</option>
+                        <option value="admin" <%= typeof selectedRole !== 'undefined' && selectedRole === 'admin' ? 'selected' : '' %>>Admin Only</option>
+                        <option value="user" <%= typeof selectedRole !== 'undefined' && selectedRole === 'user' ? 'selected' : '' %>>Users Only</option>
+                    </select>
+                </div>
+                <% if ((typeof searchTerm !== 'undefined' && searchTerm) || (typeof selectedRole !== 'undefined' && selectedRole !== 'all')) { %>
+                    <button onclick="clearSearch()" 
+                        class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Clear
+                    </button>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                    <% if (typeof users !== 'undefined' && users.length > 0) { %>
+                        <% users.forEach(function(user) { %>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        <%= user.formatted_id %>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="text-sm font-medium text-gray-900"><%= user.full_name %></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="text-sm text-gray-500"><%= user.username %></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800' %>">
+                                        <%= user.role === 'admin' ? 'Admin' : 'User' %>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= user.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' %>">
+                                        <span class="w-2 h-2 mr-1.5 mt-1.5 rounded-full <%= user.status === 'online' ? 'bg-green-600' : 'bg-gray-600' %>"></span>
+                                        <%= user.status === 'online' ? 'Online' : 'Offline' %>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="text-sm text-gray-500">
+                                        <%= user.last_login ? new Date(user.last_login).toLocaleString() : 'Never' %>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="flex justify-center space-x-3">
+                                        <a href="/users/<%= user.id %>/edit" class="text-blue-600 hover:text-blue-900">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form action="/users/<%= user.id %>/delete" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                No users found
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div> 
+
+<script>
+// Debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Function to render a single user row
+function renderUserRow(user) {
+    return `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="text-sm font-medium text-gray-900">${user.formatted_id}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="text-sm font-medium text-gray-900">${user.full_name}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="text-sm text-gray-500">${user.username}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}">
+                    ${user.role === 'admin' ? 'Admin' : 'User'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                    <span class="w-2 h-2 mr-1.5 mt-1.5 rounded-full ${user.status === 'online' ? 'bg-green-600' : 'bg-gray-600'}"></span>
+                    ${user.status === 'online' ? 'Online' : 'Offline'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="text-sm text-gray-500">
+                    ${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="flex justify-center space-x-3">
+                    <a href="/users/${user.id}/edit" class="text-blue-600 hover:text-blue-900">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <form action="/users/${user.id}/delete" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                        <button type="submit" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Function to update the table content
+function updateTable(users) {
+    const tableBody = document.getElementById('usersTableBody');
+    if (users.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                    No users found matching your criteria
+                </td>
+            </tr>
+        `;
+    } else {
+        tableBody.innerHTML = users.map(user => renderUserRow(user)).join('');
+    }
+}
+
+// Function to fetch and update users
+async function fetchUsers() {
+    const searchTerm = document.getElementById('searchInput').value;
+    const role = document.getElementById('roleSelect').value;
+    
+    try {
+        const response = await fetch(`/users/search?search=${encodeURIComponent(searchTerm)}&role=${encodeURIComponent(role)}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const users = await response.json();
+        updateTable(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+    }
+}
+
+// Function to clear search
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('roleSelect').value = 'all';
+    fetchUsers();
+}
+
+// Function to start auto-refresh
+function startAutoRefresh() {
+    // Initial fetch
+    fetchUsers();
+    
+    // Set up periodic refresh every 10 seconds
+    const refreshInterval = setInterval(fetchUsers, 10000);
+    
+    // Clean up interval when page is unloaded
+    window.addEventListener('unload', () => {
+        clearInterval(refreshInterval);
+    });
+}
+
+// Initialize when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const roleSelect = document.getElementById('roleSelect');
+    
+    // Setup event listeners with debounce
+    const debouncedFetch = debounce(fetchUsers, 300);
+    
+    searchInput.addEventListener('input', debouncedFetch);
+    roleSelect.addEventListener('change', fetchUsers);
+    
+    // Start auto-refresh
+    startAutoRefresh();
+    
+    // Add visual indicator for refresh
+    const refreshIndicator = document.createElement('div');
+    refreshIndicator.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-1 rounded-full text-sm opacity-0 transition-opacity duration-500';
+    refreshIndicator.textContent = 'Refreshing...';
+    document.body.appendChild(refreshIndicator);
+    
+    // Show refresh indicator when fetching
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        if (args[0].includes('/users/search')) {
+            refreshIndicator.style.opacity = '1';
+            try {
+                const response = await originalFetch.apply(this, args);
+                return response;
+            } finally {
+                setTimeout(() => {
+                    refreshIndicator.style.opacity = '0';
+                }, 500);
+            }
+        }
+        return originalFetch.apply(this, args);
+    };
+});
+</script> 

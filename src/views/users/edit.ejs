@@ -1,0 +1,101 @@
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">Edit User: <%= user.full_name %></h1>
+                <a href="/users" class="text-blue-500 hover:text-blue-700">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Users
+                </a>
+            </div>
+
+            <!-- User Form -->
+            <form action="/users/<%= user.id %>" method="POST" class="space-y-6">
+                <!-- Full Name -->
+                <div>
+                    <label for="full_name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" 
+                           name="full_name" 
+                           id="full_name" 
+                           value="<%= user.full_name %>"
+                           required 
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Username -->
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" 
+                           name="username" 
+                           id="username" 
+                           value="<%= user.username %>"
+                           required 
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <div class="mt-2">
+                        <span class="text-sm text-gray-600">User ID: <span class="font-medium"><%= user.formatted_id %></span></span>
+                    </div>
+                </div>
+
+                <!-- Password (Optional) -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">
+                        New Password
+                        <span class="text-gray-500 text-xs">(leave blank to keep current password)</span>
+                    </label>
+                    <input type="password" 
+                           name="password" 
+                           id="password" 
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Confirm Password -->
+                <div>
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700">
+                        Confirm New Password
+                        <span class="text-gray-500 text-xs">(leave blank if not changing password)</span>
+                    </label>
+                    <input type="password" 
+                           name="confirm_password" 
+                           id="confirm_password" 
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Role -->
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
+                    <select name="role" 
+                            id="role" 
+                            required 
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+                        <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Administrator</option>
+                    </select>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end space-x-4">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (password || confirmPassword) {
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+        }
+    }
+});
+</script> 

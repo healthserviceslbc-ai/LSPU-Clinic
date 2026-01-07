@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: lspu-medicine-inventory
+    env: node
+    buildCommand: |
+      npm cache clean --force
+      rm -rf node_modules package-lock.json
+      npm install --legacy-peer-deps
+    startCommand: node src/app.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_PATH
+        value: "/opt/render/project/src/data/database.sqlite"
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    plan: free
